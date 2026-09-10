@@ -1,0 +1,20 @@
+# Secrets & Configuration (SANGAT RAHASIA)
+.env
+
+# Telegram Session Files (SANGAT RAHASIA - Sesi Login Akun)
+*.session
+*.session-journal
+
+# Data Subscribers
+subscribers.json
+
+# Python Environment & Cache
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# System & IDE
+.DS_Store
+.vscode/
+.idea/
