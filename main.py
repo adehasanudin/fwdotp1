@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import re
 import sys
 from typing import Set
 from pyrogram import Client, filters, errors
@@ -53,6 +54,55 @@ bot_api = None
 if Config.BOT_TOKEN:
     bot_api = TelegramBotAPI(Config.BOT_TOKEN)
 
+def format_otp_message(text: str) -> str:
+    """
+    Parse raw SMS text from Atmosphere Sms and return a clean formatted HTML message.
+    Extracts OTP code (one-click copyable), merchant, amount, and card ending.
+    Falls back to sending the raw text if parsing fails.
+    """
+    if not text:
+        return text
+
+    # Try to extract OTP code from: "Use code XXXXXX to approve..."
+    otp_match = re.search(r'[Uu]se code (\d+)', text)
+    # Try to extract card ending: "card ending XXXX"
+    card_match = re.search(r'card ending (\d+)', text)
+    # Try to extract merchant: "to MERCHANT with card"
+    merchant_match = re.search(r'(?:transaction of [\d\.]+ [A-Z]+ to )(.+?)(?= with card)', text)
+    # Try to extract amount + currency: "transaction of X.XX CUR"
+    amount_match = re.search(r'transaction of ([\d\.]+) ([A-Z]+) to', text)
+
+    if otp_match:
+        otp_code = otp_match.group(1)
+        card = card_match.group(1) if card_match else "?"
+        merchant = merchant_match.group(1).strip() if merchant_match else "?"
+        amount_val = amount_match.group(1) if amount_match else "?"
+        currency = amount_match.group(2) if amount_match else ""
+
+        formatted = (
+            f"<code>OTP: {otp_code}</code>\n\n"
+            f"💳 VCC: \u2022\u2022\u2022\u2022{card}\n"
+            f"🏪 Merchant: <b>{merchant}</b>\n"
+            f"💰 Amount: {currency} {amount_val}"
+        )
+        return formatted
+
+    # Fallback: return original text stripped of the first "SMS BARU" header line
+    lines = text.strip().splitlines()
+    cleaned = []
+    skip_next_blank = False
+    for i, line in enumerate(lines):
+        if "SMS BARU" in line:
+            skip_next_blank = True
+            continue
+        if skip_next_blank and line.strip() == "":
+            skip_next_blank = False
+            continue
+        skip_next_blank = False
+        cleaned.append(line)
+    return "\n".join(cleaned).strip()
+
+
 
 def matches_keywords(text: str) -> bool:
     """Check if message matches configured keywords filter."""
@@ -64,27 +114,25 @@ def matches_keywords(text: str) -> bool:
     return any(keyword in text_lower for keyword in Config.KEYWORDS)
 
 
-async def send_to_target(message: Message, target_chat):
-    """Sends or forwards message to target chat via Userbot with FloodWait handling."""
+async def send_to_target(raw_text: str, target_chat):
+    """Sends formatted OTP message to target chat via Userbot with FloodWait handling."""
+    formatted = format_otp_message(raw_text)
     max_retries = 3
     for attempt in range(max_retries):
         try:
-            if Config.FORWARD_MODE == "forward":
-                await message.forward(target_chat)
-                logger.info(f"-> Userbot: Forwarded pesan [ID: {message.id}] ke target: {target_chat}")
-            else:
-                await message.copy(target_chat)
-                logger.info(f"-> Userbot: Copied pesan [ID: {message.id}] ke target: {target_chat}")
+            await user_app.send_message(target_chat, formatted, parse_mode="html")
+            logger.info(f"-> Userbot: Sent formatted OTP ke target: {target_chat}")
             break
         except errors.FloodWait as e:
             logger.warning(f"Telegram FloodWait hit! Tidur selama {e.value} detik...")
             await asyncio.sleep(e.value + 1)
         except errors.RPCError as e:
-            logger.error(f"Gagal Userbot copy/forward ke {target_chat}: {e}")
+            logger.error(f"Gagal Userbot send ke {target_chat}: {e}")
             break
         except Exception as e:
-            logger.error(f"Error tak terduga Userbot copy/forward ke {target_chat}: {e}")
+            logger.error(f"Error tak terduga Userbot send ke {target_chat}: {e}")
             break
+
 
 
 def is_source_chat(message: Message) -> bool:
@@ -130,19 +178,20 @@ async def process_and_forward_message(message: Message):
         logger.info("Pesan diabaikan (tidak memenuhi kata kunci filter).")
         return
 
-    # 1. Forward via Userbot to target chats configured in .env
+    # 1. Send formatted OTP message via Userbot to target chats
     for target in Config.TARGET_CHATS:
-        await send_to_target(message, target)
+        await send_to_target(text_content, target)
 
-    # 2. Broadcast via Telegram Bot HTTP API to subscribers who pressed /start
+    # 2. Broadcast formatted message via Telegram Bot HTTP API to /start subscribers
     if bot_api and subscribers and text_content:
-        logger.info(f"Broadcasting SMS via Bot API ke {len(subscribers)} subscriber...")
+        formatted = format_otp_message(text_content)
+        logger.info(f"Broadcasting formatted OTP via Bot API ke {len(subscribers)} subscriber...")
         for sub_id in list(subscribers):
-            sent = bot_api.send_message(sub_id, text_content, parse_mode=None)
+            sent = bot_api.send_message(sub_id, formatted, parse_mode="HTML")
             if sent:
-                logger.info(f"✅ Broadcast SMS sukses ke Chat ID: {sub_id}")
+                logger.info(f"✅ Broadcast OTP sukses ke Chat ID: {sub_id}")
             else:
-                logger.error(f"❌ Broadcast SMS gagal ke Chat ID: {sub_id}")
+                logger.error(f"❌ Broadcast OTP gagal ke Chat ID: {sub_id}")
     elif not subscribers:
         logger.warning("⚠️ Belum ada subscriber terdaftar! Tekan /start di @ElzoiOtp1Bot untuk mendaftar.")
 
