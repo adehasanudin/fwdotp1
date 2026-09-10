@@ -252,6 +252,18 @@ async def start_bot():
             "   Pastikan akun Telegram yang di-login-kan di VPS SUDAH JOIN / GABUNG ke channel Atmosphere Sms!"
         )
 
+    # Seed recent channel history so old OTP messages are NOT sent on restart
+    logger.info("Mengindeks pesan-pesan lama di channel agar TIDAK terkirim ulang saat restart...")
+    for source_chat in list(Config.SOURCE_CHATS):
+        try:
+            async for msg in user_app.get_chat_history(source_chat, limit=50):
+                if msg and msg.chat:
+                    msg_key = f"{msg.chat.id}_{msg.id}"
+                    processed_message_ids.add(msg_key)
+            logger.info(f"✅ Berhasil mengabaikan pesan lama dari chat ID: {source_chat}")
+        except Exception as e:
+            logger.warning(f"Gagal mengindeks riwayat pesan lama untuk {source_chat}: {e}")
+
     # Start HTTP Bot API Polling in background task if BOT_TOKEN present
     bot_task = None
     if bot_api:
