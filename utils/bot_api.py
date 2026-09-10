@@ -1,4 +1,5 @@
 import asyncio
+import html
 import json
 import urllib.request
 import urllib.parse
@@ -14,7 +15,7 @@ class TelegramBotAPI:
         self.offset = 0
         self.is_running = False
 
-    def send_message(self, chat_id: int, text: str, parse_mode: str = "HTML") -> bool:
+    def send_message(self, chat_id: int, text: str, parse_mode: str = None) -> bool:
         """Send message via Telegram HTTP Bot API."""
         url = f"{self.base_url}/sendMessage"
         params = {
@@ -31,7 +32,7 @@ class TelegramBotAPI:
                 res_data = json.loads(response.read().decode("utf-8"))
                 success = res_data.get("ok", False)
                 if not success:
-                    logger.error(f"Telegram Bot API error: {res_data}")
+                    logger.error(f"Telegram Bot API error saat kirim ke {chat_id}: {res_data}")
                 return success
         except Exception as e:
             logger.error(f"Gagal mengirim pesan via Bot API ke {chat_id}: {e}")
