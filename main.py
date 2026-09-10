@@ -69,8 +69,8 @@ def format_otp_message(text: str) -> str:
     card_match = re.search(r'card ending (\d+)', text)
     # Extract currency + amount: "transaction of CURRENCY AMOUNT to"
     amount_match = re.search(r'transaction of ([A-Z]+) ([\d\.]+) to', text)
-    # Extract merchant: "AMOUNT to MERCHANT with card"
-    merchant_match = re.search(r'[\d\.]+ to (.+?) with card', text)
+    # Extract merchant: anchored after "CURRENCY AMOUNT to MERCHANT with card"
+    merchant_match = re.search(r'transaction of [A-Z]+ [\d\.]+ to (.+?) with card', text)
 
     if otp_match:
         otp_code = otp_match.group(1)
