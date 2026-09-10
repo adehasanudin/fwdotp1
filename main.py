@@ -104,7 +104,7 @@ def is_source_chat(message: Message) -> bool:
             if clean_s and (clean_s == username or clean_s in chat_title):
                 return True
 
-    if "atmosphere" in chat_title:
+    if "atmosphere sms" in chat_title:
         return True
 
     return False
@@ -191,7 +191,7 @@ async def start_bot():
     atmosphere_found = False
     async for dialog in user_app.get_dialogs():
         title = (dialog.chat.title or "").lower()
-        if "atmosphere" in title:
+        if "atmosphere sms" in title:
             atmosphere_found = True
             logger.info(f"🎯 Terdeteksi Channel: '{dialog.chat.title}' [Chat ID: {dialog.chat.id}]")
             if dialog.chat.id not in Config.SOURCE_CHATS:
