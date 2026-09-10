@@ -3,8 +3,7 @@ import json
 import os
 import re
 import sys
-from typing import Set
-from pyrogram import Client, filters, errors
+from pyrogram import Client, filters, errors, enums
 from pyrogram.types import Message
 
 from config import Config
@@ -56,42 +55,42 @@ if Config.BOT_TOKEN:
 
 def format_otp_message(text: str) -> str:
     """
-    Parse raw SMS text from Atmosphere Sms and return a clean formatted HTML message.
-    Extracts OTP code (one-click copyable), merchant, amount, and card ending.
-    Falls back to sending the raw text if parsing fails.
+    Parse raw SMS from Atmosphere Sms and return clean HTML format.
+    OTP code in <code> block for one-click copy of digits only.
+    Format: 'Use code XXXXXX to approve ... of CURRENCY AMOUNT to MERCHANT with card ending CARD'
     """
     if not text:
         return text
 
-    # Try to extract OTP code from: "Use code XXXXXX to approve..."
+    # Extract OTP code: "Use code XXXXXX to approve"
     otp_match = re.search(r'[Uu]se code (\d+)', text)
-    # Try to extract card ending: "card ending XXXX"
+    # Extract card ending: "card ending XXXX"
     card_match = re.search(r'card ending (\d+)', text)
-    # Try to extract merchant: "to MERCHANT with card"
-    merchant_match = re.search(r'(?:transaction of [\d\.]+ [A-Z]+ to )(.+?)(?= with card)', text)
-    # Try to extract amount + currency: "transaction of X.XX CUR"
-    amount_match = re.search(r'transaction of ([\d\.]+) ([A-Z]+) to', text)
+    # Extract currency + amount: "transaction of CURRENCY AMOUNT to"
+    amount_match = re.search(r'transaction of ([A-Z]+) ([\d\.]+) to', text)
+    # Extract merchant: "AMOUNT to MERCHANT with card"
+    merchant_match = re.search(r'[\d\.]+ to (.+?) with card', text)
 
     if otp_match:
         otp_code = otp_match.group(1)
         card = card_match.group(1) if card_match else "?"
         merchant = merchant_match.group(1).strip() if merchant_match else "?"
-        amount_val = amount_match.group(1) if amount_match else "?"
-        currency = amount_match.group(2) if amount_match else ""
+        currency = amount_match.group(1) if amount_match else ""
+        amount_val = amount_match.group(2) if amount_match else "?"
 
         formatted = (
-            f"<code>OTP: {otp_code}</code>\n\n"
-            f"💳 VCC: \u2022\u2022\u2022\u2022{card}\n"
-            f"🏪 Merchant: <b>{merchant}</b>\n"
-            f"💰 Amount: {currency} {amount_val}"
+            f"<b>OTP:</b> <code>{otp_code}</code>\n\n"
+            f"\U0001f4b3 VCC: \u2022\u2022\u2022\u2022{card}\n"
+            f"\U0001f3ea Merchant: <b>{merchant}</b>\n"
+            f"\U0001f4b0 Amount: {currency} {amount_val}"
         )
         return formatted
 
-    # Fallback: return original text stripped of the first "SMS BARU" header line
+    # Fallback: strip SMS BARU header and return plain text
     lines = text.strip().splitlines()
     cleaned = []
     skip_next_blank = False
-    for i, line in enumerate(lines):
+    for line in lines:
         if "SMS BARU" in line:
             skip_next_blank = True
             continue
@@ -120,7 +119,7 @@ async def send_to_target(raw_text: str, target_chat):
     max_retries = 3
     for attempt in range(max_retries):
         try:
-            await user_app.send_message(target_chat, formatted, parse_mode="html")
+            await user_app.send_message(target_chat, formatted, parse_mode=enums.ParseMode.HTML)
             logger.info(f"-> Userbot: Sent formatted OTP ke target: {target_chat}")
             break
         except errors.FloodWait as e:
