@@ -15,7 +15,38 @@ app.get('/admin', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+const PORT = process.env.PORT || process.env.WA_PORT || 4001;
+const OTPS_FILE = path.join(__dirname, 'otps.json');
 const SETTINGS_FILE = path.join(__dirname, 'settings.json');
+
+let sseClients = [];
+
+function loadOtps() {
+    if (fs.existsSync(OTPS_FILE)) {
+        try {
+            return JSON.parse(fs.readFileSync(OTPS_FILE, 'utf-8'));
+        } catch (e) {
+            console.error('[Web Server] Error reading otps.json:', e.message);
+        }
+    }
+    return [];
+}
+
+function saveOtps(otps) {
+    try {
+        fs.writeFileSync(OTPS_FILE, JSON.stringify(otps.slice(0, 9), null, 2));
+    } catch (e) {
+        console.error('[Web Server] Error saving otps.json:', e.message);
+    }
+}
+
+let otpHistory = loadOtps().slice(0, 9);
+
+function broadcastSSE(data) {
+    sseClients.forEach(client => {
+        client.res.write(`data: ${JSON.stringify(data)}\n\n`);
+    });
+}
 
 function loadSettings() {
     if (fs.existsSync(SETTINGS_FILE)) {
