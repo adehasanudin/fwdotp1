@@ -65,14 +65,27 @@ function loadSettings() {
     }
     if (!settings) {
         settings = {
-            pin: process.env.DASHBOARD_PIN || '123456',
+            user_pin: '123456',
+            admin_pin: process.env.DASHBOARD_PIN || '888999',
             sources: [
                 { id: '-1003976311793', name: 'Atmosphere Sms', enabled: true },
                 { id: '-1003845779628', name: 'Otp quin', enabled: true }
             ]
         };
         saveSettings(settings);
-        console.log('[Web Server] settings.json dibuat baru dari default .env');
+    } else {
+        let changed = false;
+        if (!settings.user_pin) {
+            settings.user_pin = settings.pin || '123456';
+            changed = true;
+        }
+        if (!settings.admin_pin) {
+            settings.admin_pin = '888999';
+            changed = true;
+        }
+        if (changed) {
+            saveSettings(settings);
+        }
     }
     return settings;
 }
@@ -85,12 +98,27 @@ function saveSettings(settings) {
     }
 }
 
-// 0. API Auth — verify dashboard PIN
+// Middleware untuk memverifikasi PIN Admin di endpoint /api/settings/*
+function requireAdminPin(req, res, next) {
+    const settings = loadSettings();
+    const adminPinHeader = req.headers['x-admin-pin'] || req.body?.adminPin;
+    if (!adminPinHeader || String(adminPinHeader) !== String(settings.admin_pin)) {
+        return res.status(403).json({ ok: false, message: 'Akses Ditolak: Membutuhkan PIN Admin' });
+    }
+    next();
+}
+
+// 0. API Auth — verify dashboard PIN (User vs Admin)
 app.post('/api/auth', (req, res) => {
     const { pin } = req.body;
     const settings = loadSettings();
-    if (String(pin) === String(settings.pin)) {
-        return res.json({ ok: true });
+    const cleanPin = String(pin).trim();
+
+    if (cleanPin === String(settings.admin_pin)) {
+        return res.json({ ok: true, role: 'admin' });
+    }
+    if (cleanPin === String(settings.user_pin)) {
+        return res.json({ ok: true, role: 'user' });
     }
     return res.status(401).json({ ok: false, message: 'PIN salah' });
 });
@@ -178,14 +206,19 @@ app.post('/api/otp/:id/copy', (req, res) => {
     return res.status(404).json({ status: 'error', message: 'OTP tidak ditemukan' });
 });
 
-// 6. Admin API Settings
-app.get('/api/settings', (req, res) => {
+// 6. Admin API Settings (Membutuhkan middleware requireAdminPin)
+app.get('/api/settings', requireAdminPin, (req, res) => {
     const settings = loadSettings();
-    return res.json({ ok: true, sources: settings.sources });
+    return res.json({
+        ok: true,
+        sources: settings.sources,
+        user_pin: settings.user_pin,
+        admin_pin: settings.admin_pin
+    });
 });
 
 // Add new Telegram channel source
-app.post('/api/settings/sources', (req, res) => {
+app.post('/api/settings/sources', requireAdminPin, (req, res) => {
     const { id, name } = req.body;
     if (!id || !name) {
         return res.status(400).json({ ok: false, message: 'ID/Username dan Nama Channel wajib diisi' });
@@ -203,7 +236,7 @@ app.post('/api/settings/sources', (req, res) => {
 });
 
 // Toggle channel source ON/OFF
-app.put('/api/settings/sources/:id/toggle', (req, res) => {
+app.put('/api/settings/sources/:id/toggle', requireAdminPin, (req, res) => {
     const id = decodeURIComponent(req.params.id);
     const settings = loadSettings();
     const source = settings.sources.find(s => String(s.id) === String(id));
@@ -216,7 +249,7 @@ app.put('/api/settings/sources/:id/toggle', (req, res) => {
 });
 
 // Delete channel source
-app.delete('/api/settings/sources/:id', (req, res) => {
+app.delete('/api/settings/sources/:id', requireAdminPin, (req, res) => {
     const id = decodeURIComponent(req.params.id);
     const settings = loadSettings();
     settings.sources = settings.sources.filter(s => String(s.id) !== String(id));
@@ -224,24 +257,33 @@ app.delete('/api/settings/sources/:id', (req, res) => {
     return res.json({ ok: true, sources: settings.sources });
 });
 
-// Change 6-Digit PIN
-app.post('/api/settings/pin', (req, res) => {
-    const { oldPin, newPin } = req.body;
+// Change 6-Digit PIN (User or Admin)
+app.post('/api/settings/pin', requireAdminPin, (req, res) => {
+    const { targetPin, newPin } = req.body; // targetPin: 'user' | 'admin'
     const settings = loadSettings();
-    if (String(oldPin) !== String(settings.pin)) {
-        return res.status(400).json({ ok: false, message: 'PIN Lama salah' });
-    }
+
     if (!newPin || String(newPin).length !== 6 || !/^\d+$/.test(String(newPin))) {
-        return res.status(400).json({ ok: false, message: 'PIN Baru harus berupa 6 digit angka' });
+        return res.status(400).json({ ok: false, message: 'PIN Baru harus 6 digit angka' });
     }
-    settings.pin = String(newPin);
+
+    if (targetPin === 'user') {
+        settings.user_pin = String(newPin);
+    } else if (targetPin === 'admin') {
+        settings.admin_pin = String(newPin);
+    } else {
+        return res.status(400).json({ ok: false, message: 'Jenis PIN tidak valid' });
+    }
+
     saveSettings(settings);
 
     // Broadcast SSE to force logout all active sessions immediately
     broadcastSSE({ type: 'pin_changed' });
-    console.log(`[Web Dashboard] 🔑 PIN telah diubah. Memutus seluruh sesi aktif.`);
+    console.log(`[Web Dashboard] 🔑 PIN ${targetPin.toUpperCase()} telah diubah. Memutus seluruh sesi aktif.`);
 
-    return res.json({ ok: true, message: 'PIN 6-digit berhasil diperbarui' });
+    return res.json({
+        ok: true,
+        message: `PIN ${targetPin === 'admin' ? 'Admin' : 'Pengunjung'} berhasil diperbarui!`
+    });
 });
 
 

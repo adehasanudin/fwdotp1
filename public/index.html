@@ -904,13 +904,27 @@
                 <!-- Section 2: Security & PIN Management -->
                 <div class="admin-section" style="margin-top: 20px;">
                     <div class="section-title">🔑 Pengaturan PIN Keamanan (6 Digit)</div>
-                    <div class="section-desc">Ubah PIN 6-digit yang digunakan untuk masuk ke dashboard.</div>
+                    <div class="section-desc">Atur PIN terpisah untuk Pengunjung (hanya lihat OTP) dan Admin (pengelola server).</div>
 
-                    <div class="pin-change-box">
-                        <div class="form-row">
-                            <input type="password" id="old-pin-input" maxlength="6" class="form-input" placeholder="PIN Lama (6 digit)">
-                            <input type="password" id="new-pin-input" maxlength="6" class="form-input" placeholder="PIN Baru (6 digit)">
-                            <button class="btn btn-accent" onclick="changePin()">Ubah PIN</button>
+                    <div style="display: flex; flex-direction: column; gap: 16px; margin-top: 16px;">
+                        <!-- User PIN Box -->
+                        <div class="pin-change-box" style="background: rgba(255,255,255,0.02); padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.06);">
+                            <div style="font-weight: 600; margin-bottom: 4px; color: #a7f3d0;">👥 PIN Pengunjung (Visitor PIN)</div>
+                            <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">Diberikan kepada tim/pengunjung untuk masuk & menyalin OTP.</div>
+                            <div class="form-row">
+                                <input type="password" id="user-pin-input" maxlength="6" class="form-input" placeholder="PIN Pengunjung Baru (6 digit)">
+                                <button class="btn btn-accent" onclick="changePin('user')">Simpan PIN Pengunjung</button>
+                            </div>
+                        </div>
+
+                        <!-- Admin PIN Box -->
+                        <div class="pin-change-box" style="background: rgba(99,102,241,0.04); padding: 16px; border-radius: 12px; border: 1px solid rgba(99,102,241,0.2);">
+                            <div style="font-weight: 600; margin-bottom: 4px; color: #c084fc;">🛡️ PIN Admin (Master Admin PIN)</div>
+                            <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">Digunakan khusus untuk mengelola pengaturan channel & PIN.</div>
+                            <div class="form-row">
+                                <input type="password" id="admin-pin-input" maxlength="6" class="form-input" placeholder="PIN Admin Baru (6 digit)">
+                                <button class="btn btn-accent" style="background: linear-gradient(135deg, #a855f7, #6366f1);" onclick="changePin('admin')">Simpan PIN Admin</button>
+                            </div>
                         </div>
                         <div id="pin-change-msg" class="form-msg"></div>
                     </div>
@@ -1022,7 +1036,8 @@
                 if (data.ok) {
                     sessionStorage.setItem(SESSION_KEY, Date.now().toString());
                     sessionStorage.setItem('otp_auth_pin', currentPin);
-                    showDashboard();
+                    sessionStorage.setItem('user_role', data.role);
+                    showDashboard(data.role);
                 } else {
                     document.getElementById('pin-error').textContent = '❌ PIN salah, coba lagi';
                     document.getElementById('pin-card').classList.add('shake');
@@ -1040,9 +1055,23 @@
             }
         }
 
-        function showDashboard() {
+        function showDashboard(role) {
             document.getElementById('pin-overlay').classList.add('hidden');
             document.getElementById('main-content').style.display = 'block';
+
+            const activeRole = role || sessionStorage.getItem('user_role');
+            const isAdminPath = /^\/admin-.+$/.test(window.location.pathname);
+            const adminBtn = document.getElementById('admin-settings-btn');
+            
+            // Tombol Setting Admin HANYA muncul jika login menggunakan PIN Admin DAN berada di URL rahasia /admin-XXXX
+            if (adminBtn) {
+                if (activeRole === 'admin' && isAdminPath) {
+                    adminBtn.style.display = '';
+                } else {
+                    adminBtn.style.display = 'none';
+                }
+            }
+
             fetchOtps();
             initSSE();
             resetInactivityTimer();
@@ -1055,6 +1084,7 @@
         function lockDashboard() {
             sessionStorage.removeItem(SESSION_KEY);
             sessionStorage.removeItem('otp_auth_pin');
+            sessionStorage.removeItem('user_role');
             clearTimeout(inactivityTimer);
             if (sseSource) { sseSource.close(); sseSource = null; }
             document.getElementById('main-content').style.display = 'none';
@@ -1084,7 +1114,8 @@
                     });
                     const data = await res.json();
                     if (data.ok) {
-                        showDashboard();
+                        sessionStorage.setItem('user_role', data.role);
+                        showDashboard(data.role);
                         return;
                     }
                 } catch (e) {}
@@ -1290,11 +1321,6 @@
                 } catch(err){}
             };
 
-            sseSource.onopen = function() {
-                statusEl.innerText = 'Live Connected';
-                statusEl.parentElement.style.borderColor = 'rgba(34, 197, 94, 0.2)';
-            };
-
             sseSource.onerror = function() {
                 statusEl.innerText = 'Reconnecting...';
                 statusEl.parentElement.style.borderColor = 'rgba(239, 68, 68, 0.2)';
@@ -1308,6 +1334,21 @@
             showToast('🔒 Sesi telah diakhiri / Logout');
         }
 
+        async function fetchAdminAPI(url, options = {}) {
+            const adminPin = sessionStorage.getItem('otp_auth_pin');
+            const headers = {
+                'Content-Type': 'application/json',
+                'x-admin-pin': adminPin || '',
+                ...(options.headers || {})
+            };
+            const res = await fetch(url, { ...options, headers });
+            if (res.status === 403) {
+                showToast('🚫 Akses Ditolak! Membutuhkan PIN Admin.');
+                throw new Error('Forbidden');
+            }
+            return res;
+        }
+
         async function openAdminModal() {
             document.getElementById('admin-modal').classList.remove('hidden');
             await loadAdminSettings();
@@ -1319,12 +1360,13 @@
 
         async function loadAdminSettings() {
             try {
-                const res = await fetch('/api/settings');
+                const res = await fetchAdminAPI('/api/settings');
                 const data = await res.json();
                 if (data.ok) {
                     renderSourcesList(data.sources);
                 }
             } catch (err) {
+                console.error(err);
                 showToast('⚠️ Gagal memuat data pengaturan admin');
             }
         }
@@ -1354,7 +1396,7 @@
 
         async function toggleSource(id) {
             try {
-                const res = await fetch(`/api/settings/sources/${id}/toggle`, { method: 'PUT' });
+                const res = await fetchAdminAPI(`/api/settings/sources/${id}/toggle`, { method: 'PUT' });
                 const data = await res.json();
                 if (data.ok) {
                     const statusText = data.source.enabled ? 'DI-ON-KAN 🟢' : 'DI-OFF-KAN 🔴';
@@ -1377,9 +1419,8 @@
                 return;
             }
             try {
-                const res = await fetch('/api/settings/sources', {
+                const res = await fetchAdminAPI('/api/settings/sources', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ id, name })
                 });
                 const data = await res.json();
@@ -1399,7 +1440,7 @@
         async function deleteSource(id) {
             if (!confirm('Apakah Anda yakin ingin menghapus sumber channel ini?')) return;
             try {
-                const res = await fetch(`/api/settings/sources/${id}`, { method: 'DELETE' });
+                const res = await fetchAdminAPI(`/api/settings/sources/${id}`, { method: 'DELETE' });
                 const data = await res.json();
                 if (data.ok) {
                     showToast('🗑️ Sumber channel terhapus');
@@ -1410,14 +1451,15 @@
             }
         }
 
-        async function changePin() {
-            const oldPin = document.getElementById('old-pin-input').value.trim();
-            const newPin = document.getElementById('new-pin-input').value.trim();
+        async function changePin(targetPin) {
+            const inputId = targetPin === 'user' ? 'user-pin-input' : 'admin-pin-input';
+            const inputEl = document.getElementById(inputId);
+            const newPin = inputEl ? inputEl.value.trim() : '';
             const msgEl = document.getElementById('pin-change-msg');
             msgEl.textContent = '';
 
-            if (!oldPin || !newPin) {
-                msgEl.textContent = '❌ Masukkan PIN Lama dan PIN Baru';
+            if (!newPin) {
+                msgEl.textContent = '❌ Masukkan PIN Baru (6 digit)';
                 msgEl.style.color = '#ef4444';
                 return;
             }
@@ -1428,18 +1470,16 @@
             }
 
             try {
-                const res = await fetch('/api/settings/pin', {
+                const res = await fetchAdminAPI('/api/settings/pin', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ oldPin, newPin })
+                    body: JSON.stringify({ targetPin, newPin })
                 });
                 const data = await res.json();
                 if (data.ok) {
-                    msgEl.textContent = '✅ PIN 6-digit berhasil diubah!';
+                    msgEl.textContent = `✅ ${data.message}`;
                     msgEl.style.color = '#22c55e';
-                    document.getElementById('old-pin-input').value = '';
-                    document.getElementById('new-pin-input').value = '';
-                    showToast('🔑 PIN Berhasil Diubah! Silakan gunakan PIN baru untuk login berikutnya.');
+                    inputEl.value = '';
+                    showToast(`🔑 ${data.message}`);
                 } else {
                     msgEl.textContent = `❌ ${data.message}`;
                     msgEl.style.color = '#ef4444';
@@ -1449,21 +1489,6 @@
                 msgEl.style.color = '#ef4444';
             }
         }
-
-        // Detect admin access via secret URL: /admin-XXXX
-        const isAdminPath = /^\/admin-.+$/.test(window.location.pathname);
-        if (isAdminPath) {
-            // Mark this session as admin
-            sessionStorage.setItem('is_admin', '1');
-        }
-
-        const isAdmin = sessionStorage.getItem('is_admin') === '1';
-        if (isAdmin) {
-            const adminBtn = document.getElementById('admin-settings-btn');
-            if (adminBtn) adminBtn.style.display = '';
-        }
-
-        // End of script
     </script>
 </body>
 </html>
