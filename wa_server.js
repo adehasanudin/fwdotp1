@@ -115,19 +115,32 @@ function requireAdminPin(req, res, next) {
     next();
 }
 
-// 0. API Auth — verify dashboard PIN (User vs Admin)
+// 0. API Auth — verify dashboard PIN with strict route/role scoping
 app.post('/api/auth', (req, res) => {
-    const { pin } = req.body;
+    const { pin, path } = req.body;
     const settings = loadSettings();
     const cleanPin = String(pin).trim();
+    const isNextAdmin = path === 'admin';
 
-    if (cleanPin === String(settings.admin_pin)) {
-        return res.json({ ok: true, role: 'admin' });
+    if (isNextAdmin) {
+        // Accessing secret URL (/admin-XXXX) -> Only Admin PIN allowed
+        if (cleanPin === String(settings.admin_pin)) {
+            return res.json({ ok: true, role: 'admin' });
+        }
+        if (cleanPin === String(settings.user_pin)) {
+            return res.status(403).json({ ok: false, message: 'Akses Ditolak: PIN Pengunjung tidak dapat digunakan di Halaman Admin' });
+        }
+        return res.status(401).json({ ok: false, message: 'PIN Admin salah' });
+    } else {
+        // Accessing public URL (/) -> Only User PIN allowed
+        if (cleanPin === String(settings.user_pin)) {
+            return res.json({ ok: true, role: 'user' });
+        }
+        if (cleanPin === String(settings.admin_pin)) {
+            return res.status(403).json({ ok: false, message: 'Akses Ditolak: PIN Admin hanya dapat digunakan pada URL Admin Rahasia' });
+        }
+        return res.status(401).json({ ok: false, message: 'PIN Pengunjung salah' });
     }
-    if (cleanPin === String(settings.user_pin)) {
-        return res.json({ ok: true, role: 'user' });
-    }
-    return res.status(401).json({ ok: false, message: 'PIN salah' });
 });
 
 // 1. API GET OTPs history

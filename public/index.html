@@ -1027,10 +1027,11 @@
 
         async function verifyPin() {
             try {
+                const isAdminPath = /^\/admin-.+$/.test(window.location.pathname);
                 const res = await fetch('/api/auth', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ pin: currentPin })
+                    body: JSON.stringify({ pin: currentPin, path: isAdminPath ? 'admin' : 'user' })
                 });
                 const data = await res.json();
                 if (data.ok) {
@@ -1039,7 +1040,7 @@
                     sessionStorage.setItem('user_role', data.role);
                     showDashboard(data.role);
                 } else {
-                    document.getElementById('pin-error').textContent = '❌ PIN salah, coba lagi';
+                    document.getElementById('pin-error').textContent = `❌ ${data.message || 'PIN salah, coba lagi'}`;
                     document.getElementById('pin-card').classList.add('shake');
                     updatePinDots('error');
                     setTimeout(() => {
@@ -1105,12 +1106,13 @@
         async function checkSession() {
             const stored = sessionStorage.getItem(SESSION_KEY);
             const storedPin = sessionStorage.getItem('otp_auth_pin');
+            const isAdminPath = /^\/admin-.+$/.test(window.location.pathname);
             if (stored && storedPin && Date.now() - parseInt(stored) < SESSION_DURATION) {
                 try {
                     const res = await fetch('/api/auth', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ pin: storedPin })
+                        body: JSON.stringify({ pin: storedPin, path: isAdminPath ? 'admin' : 'user' })
                     });
                     const data = await res.json();
                     if (data.ok) {
