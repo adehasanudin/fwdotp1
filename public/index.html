@@ -1178,6 +1178,30 @@
             });
         }
 
+        function formatLocalTime(item) {
+            if (!item) return 'Baru Saja';
+            let dateObj = null;
+
+            if (item.date) {
+                const d = new Date(item.date);
+                if (!isNaN(d.getTime())) dateObj = d;
+            }
+            if (!dateObj && item.id && typeof item.id === 'number' && item.id > 1000000000000) {
+                const d = new Date(item.id);
+                if (!isNaN(d.getTime())) dateObj = d;
+            }
+
+            if (dateObj) {
+                return dateObj.toLocaleTimeString(navigator.language || 'id-ID', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false
+                }).replace(/:/g, '.');
+            }
+            return item.time || 'Baru Saja';
+        }
+
         function showToast(msg) {
             const toast = document.getElementById('toast');
             toast.innerText = msg;
@@ -1222,6 +1246,7 @@
                 const statusClass = isCopied ? 'copied' : 'uncopied';
                 const statusTag = isCopied ? '<span class="otp-status-tag copied">✓ DISALIN</span>' : '<span class="otp-status-tag uncopied">✨ BELUM DISALIN</span>';
                 const copyBtnText = isCopied ? '✓ Copied' : 'Copy 📋';
+                const localTimeFormatted = formatLocalTime(item);
 
                 return `
                 <div class="otp-card ${statusClass}">
@@ -1230,7 +1255,7 @@
                             <span class="otp-label">Kode OTP</span>
                             ${statusTag}
                         </div>
-                        <span class="time-stamp">${item.time || 'Baru Saja'}</span>
+                        <span class="time-stamp">${localTimeFormatted}</span>
                     </div>
                     
                     <div class="otp-code-box ${statusClass}" onclick="copyCode('${item.id}', '${item.otp}')" title="Klik untuk menyalin angka ${item.otp}">
