@@ -1040,7 +1040,7 @@
                     sessionStorage.setItem('user_role', data.role);
                     showDashboard(data.role);
                 } else {
-                    document.getElementById('pin-error').textContent = `❌ ${data.message || 'PIN salah, coba lagi'}`;
+                    document.getElementById('pin-error').textContent = '❌ PIN salah, coba lagi';
                     document.getElementById('pin-card').classList.add('shake');
                     updatePinDots('error');
                     setTimeout(() => {

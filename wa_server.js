@@ -127,19 +127,13 @@ app.post('/api/auth', (req, res) => {
         if (cleanPin === String(settings.admin_pin)) {
             return res.json({ ok: true, role: 'admin' });
         }
-        if (cleanPin === String(settings.user_pin)) {
-            return res.status(403).json({ ok: false, message: 'Akses Ditolak: PIN Pengunjung tidak dapat digunakan di Halaman Admin' });
-        }
-        return res.status(401).json({ ok: false, message: 'PIN Admin salah' });
+        return res.status(401).json({ ok: false, message: 'PIN salah' });
     } else {
         // Accessing public URL (/) -> Only User PIN allowed
         if (cleanPin === String(settings.user_pin)) {
             return res.json({ ok: true, role: 'user' });
         }
-        if (cleanPin === String(settings.admin_pin)) {
-            return res.status(403).json({ ok: false, message: 'Akses Ditolak: PIN Admin hanya dapat digunakan pada URL Admin Rahasia' });
-        }
-        return res.status(401).json({ ok: false, message: 'PIN Pengunjung salah' });
+        return res.status(401).json({ ok: false, message: 'PIN salah' });
     }
 });
 
