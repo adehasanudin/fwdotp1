@@ -72,14 +72,20 @@ function loadSettings() {
             ]
         };
         saveSettings(settings);
-    }
-    // Sync PIN from .env if DASHBOARD_PIN is set and differs from settings.json
-    if (process.env.DASHBOARD_PIN && settings.pin !== process.env.DASHBOARD_PIN) {
-        settings.pin = process.env.DASHBOARD_PIN;
-        saveSettings(settings);
-        console.log('[Web Server] PIN disinkronisasi dari .env ke settings.json');
+        console.log('[Web Server] settings.json dibuat baru dari default .env');
     }
     return settings;
+}
+
+// Sinkronisasi PIN dari .env ke settings.json hanya sekali saat server startup
+function syncPinFromEnvOnce() {
+    if (!process.env.DASHBOARD_PIN) return;
+    const settings = loadSettings();
+    if (settings.pin !== process.env.DASHBOARD_PIN) {
+        settings.pin = process.env.DASHBOARD_PIN;
+        saveSettings(settings);
+        console.log(`[Web Server] ✅ PIN disinkronisasi dari .env ke settings.json: ${process.env.DASHBOARD_PIN}`);
+    }
 }
 
 function saveSettings(settings) {
@@ -253,4 +259,6 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`🌐 WEB OTP DASHBOARD BERHASIL DIJALANKAN DI PORT ${PORT}`);
     console.log(`📌 AKSES WEBSITE: http://0.0.0.0:${PORT} (atau http://IP-VPS:${PORT})`);
     console.log(`===============================================================\n`);
+    syncPinFromEnvOnce();
 });
+
