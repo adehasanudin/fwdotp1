@@ -102,6 +102,7 @@ app.post('/api/otp', (req, res) => {
             merchant: merchant || '?',
             amount: amount || '?',
             raw_text: raw_text || '',
+            copied: false,
             time: timeStr,
             date: now.toISOString()
         };
@@ -114,7 +115,7 @@ app.post('/api/otp', (req, res) => {
         saveOtps(otpHistory);
 
         // Broadcast real-time update to open web browsers
-        broadcastSSE(otpItem);
+        broadcastSSE({ type: 'new_otp', data: otpItem });
         console.log(`[Web Dashboard] 🔔 OTP Baru Diterima & Pushed ke Web: ${otpItem.otp} (${otpItem.merchant})`);
 
         return res.json({ status: 'success', data: otpItem });
@@ -122,6 +123,20 @@ app.post('/api/otp', (req, res) => {
         console.error('[API Error]:', err);
         return res.status(500).json({ status: 'error', message: err.message });
     }
+});
+
+// 5. API POST Mark OTP as Copied Globally (Synchronize to all visitors)
+app.post('/api/otp/:id/copy', (req, res) => {
+    const id = req.params.id;
+    const item = otpHistory.find(o => String(o.id) === String(id));
+    if (item) {
+        item.copied = true;
+        saveOtps(otpHistory);
+        broadcastSSE({ type: 'otp_copied', id: item.id });
+        console.log(`[Web Dashboard] 📋 OTP ${item.otp} disalin oleh pengunjung, menyamakan ke seluruh visitor`);
+        return res.json({ status: 'success', id: item.id });
+    }
+    return res.status(404).json({ status: 'error', message: 'OTP tidak ditemukan' });
 });
 
 app.get('/status', (req, res) => {

@@ -799,9 +799,17 @@
                 try {
                     localStorage.setItem('copied_otps', JSON.stringify(Array.from(copiedOtpIds)));
                 } catch(e){}
+                
+                // Update local memory state
+                const item = allOtps.find(o => String(o.id) === String(id));
+                if (item) { item.copied = true; }
+
                 showToast(`✅ Code ${code} Disalin!`);
                 playChime();
                 renderOtps(allOtps);
+
+                // Notify backend server to sync copy status to ALL connected visitors
+                fetch(`/api/otp/${id}/copy`, { method: 'POST' }).catch(() => {});
             });
         }
 
@@ -845,7 +853,7 @@
             }
 
             grid.innerHTML = filtered.map(item => {
-                const isCopied = copiedOtpIds.has(String(item.id));
+                const isCopied = Boolean(item.copied) || copiedOtpIds.has(String(item.id));
                 const statusClass = isCopied ? 'copied' : 'uncopied';
                 const statusTag = isCopied ? '<span class="otp-status-tag copied">✓ DISALIN</span>' : '<span class="otp-status-tag uncopied">✨ BELUM DISALIN</span>';
                 const copyBtnText = isCopied ? '✓ Copied' : 'Copy 📋';
@@ -917,7 +925,20 @@
 
             sseSource.onmessage = function(e) {
                 try {
-                    const newOtp = JSON.parse(e.data);
+                    const eventData = JSON.parse(e.data);
+                    
+                    // Case 1: Notification of OTP copied by any visitor
+                    if (eventData.type === 'otp_copied') {
+                        const target = allOtps.find(o => String(o.id) === String(eventData.id));
+                        if (target) {
+                            target.copied = true;
+                            renderOtps(allOtps);
+                        }
+                        return;
+                    }
+
+                    // Case 2: New OTP arrived
+                    const newOtp = eventData.type === 'new_otp' ? eventData.data : eventData;
                     allOtps.unshift(newOtp);
                     if (allOtps.length > 9) {
                         allOtps = allOtps.slice(0, 9);
