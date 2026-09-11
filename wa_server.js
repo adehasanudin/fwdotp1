@@ -75,8 +75,14 @@ function loadSettings() {
         saveSettings(settings);
     } else {
         let changed = false;
+        if (settings.pin) {
+            settings.admin_pin = settings.admin_pin || settings.pin || '888999';
+            settings.user_pin = settings.user_pin && settings.user_pin !== settings.pin ? settings.user_pin : '123456';
+            delete settings.pin;
+            changed = true;
+        }
         if (!settings.user_pin) {
-            settings.user_pin = settings.pin || '123456';
+            settings.user_pin = '123456';
             changed = true;
         }
         if (!settings.admin_pin) {
@@ -85,6 +91,7 @@ function loadSettings() {
         }
         if (changed) {
             saveSettings(settings);
+            console.log(`[Web Server] ✅ Migration settings.json: User PIN=${settings.user_pin}, Admin PIN=${settings.admin_pin}`);
         }
     }
     return settings;
