@@ -185,8 +185,34 @@ async def send_to_target(raw_text: str, target_chat):
 
 
 
+SETTINGS_FILE = "settings.json"
+
+def get_dynamic_sources():
+    """Load enabled channel sources dynamically from settings.json."""
+    if os.path.exists(SETTINGS_FILE):
+        try:
+            with open(SETTINGS_FILE, "r") as f:
+                data = json.load(f)
+                sources = data.get("sources", [])
+                enabled_sources = []
+                for s in sources:
+                    if s.get("enabled", True):
+                        sid = str(s.get("id", "")).strip()
+                        sname = str(s.get("name", "")).strip().lower()
+                        if sid:
+                            enabled_sources.append({"id": sid, "name": sname})
+                return enabled_sources
+        except Exception as e:
+            logger.error(f"Gagal membaca settings.json di main.py: {e}")
+    
+    fallback = []
+    for sc in Config.SOURCE_CHATS:
+        fallback.append({"id": str(sc), "name": str(sc).lower()})
+    return fallback
+
+
 def is_source_chat(message: Message) -> bool:
-    """Check if message originates from configured source chats or known OTP channels."""
+    """Check if message originates from an ENABLED source chat in settings.json."""
     if not message or not message.chat:
         return False
 
@@ -194,19 +220,25 @@ def is_source_chat(message: Message) -> bool:
     chat_title = (message.chat.title or message.chat.first_name or "").lower()
     username = (message.chat.username or "").lower()
 
-    for source in Config.SOURCE_CHATS:
-        if isinstance(source, int) and source == chat_id:
-            return True
-        if isinstance(source, str):
-            clean_s = source.lstrip("@").lower()
-            if clean_s and (clean_s == username or clean_s in chat_title):
-                return True
+    active_sources = get_dynamic_sources()
+    if not active_sources:
+        return False
 
-    # Auto-detect known OTP channel titles
-    if "atmosphere sms" in chat_title:
-        return True
-    if "otp quin" in chat_title:
-        return True
+    for s in active_sources:
+        sid = s["id"]
+        sname = s["name"]
+
+        # Check by numeric ID match
+        if sid.lstrip("-").isdigit() and int(sid) == chat_id:
+            return True
+
+        # Check by username or channel title
+        clean_sid = sid.lstrip("@").lower()
+        if clean_sid and (clean_sid == username or clean_sid in chat_title):
+            return True
+
+        if sname and (sname in chat_title or sname in username):
+            return True
 
     return False
 

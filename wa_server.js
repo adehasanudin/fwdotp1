@@ -11,46 +11,44 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-const PORT = process.env.PORT || process.env.WA_PORT || 4001;
-const OTPS_FILE = path.join(__dirname, 'otps.json');
-const DASHBOARD_PIN = process.env.DASHBOARD_PIN || '123456';
+app.get('/admin', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
-let sseClients = [];
+const SETTINGS_FILE = path.join(__dirname, 'settings.json');
 
-// Helper to load OTP history
-function loadOtps() {
-    if (fs.existsSync(OTPS_FILE)) {
+function loadSettings() {
+    if (fs.existsSync(SETTINGS_FILE)) {
         try {
-            return JSON.parse(fs.readFileSync(OTPS_FILE, 'utf-8'));
+            return JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf-8'));
         } catch (e) {
-            console.error('[Web Server] Error reading otps.json:', e.message);
+            console.error('[Web Server] Error reading settings.json:', e.message);
         }
     }
-    return [];
+    const defaultSettings = {
+        pin: process.env.DASHBOARD_PIN || '123456',
+        sources: [
+            { id: '-1003976311793', name: 'Atmosphere Sms', enabled: true },
+            { id: '-1003845779628', name: 'Otp quin', enabled: true }
+        ]
+    };
+    saveSettings(defaultSettings);
+    return defaultSettings;
 }
 
-// Helper to save OTP history (Maksimal 9 OTP terbaru)
-function saveOtps(otps) {
+function saveSettings(settings) {
     try {
-        fs.writeFileSync(OTPS_FILE, JSON.stringify(otps.slice(0, 9), null, 2));
+        fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2));
     } catch (e) {
-        console.error('[Web Server] Error saving otps.json:', e.message);
+        console.error('[Web Server] Error saving settings.json:', e.message);
     }
-}
-
-let otpHistory = loadOtps().slice(0, 9);
-
-// SSE Broadcast helper for real-time web clients
-function broadcastSSE(data) {
-    sseClients.forEach(client => {
-        client.res.write(`data: ${JSON.stringify(data)}\n\n`);
-    });
 }
 
 // 0. API Auth — verify dashboard PIN
 app.post('/api/auth', (req, res) => {
     const { pin } = req.body;
-    if (String(pin) === String(DASHBOARD_PIN)) {
+    const settings = loadSettings();
+    if (String(pin) === String(settings.pin)) {
         return res.json({ ok: true });
     }
     return res.status(401).json({ ok: false, message: 'PIN salah' });
@@ -137,6 +135,67 @@ app.post('/api/otp/:id/copy', (req, res) => {
         return res.json({ status: 'success', id: item.id });
     }
     return res.status(404).json({ status: 'error', message: 'OTP tidak ditemukan' });
+});
+
+// 6. Admin API Settings
+app.get('/api/settings', (req, res) => {
+    const settings = loadSettings();
+    return res.json({ ok: true, sources: settings.sources });
+});
+
+// Add new Telegram channel source
+app.post('/api/settings/sources', (req, res) => {
+    const { id, name } = req.body;
+    if (!id || !name) {
+        return res.status(400).json({ ok: false, message: 'ID/Username dan Nama Channel wajib diisi' });
+    }
+    const settings = loadSettings();
+    const cleanId = String(id).trim();
+    const cleanName = String(name).trim();
+    const exists = settings.sources.find(s => String(s.id).toLowerCase() === cleanId.toLowerCase());
+    if (exists) {
+        return res.status(400).json({ ok: false, message: 'Sumber channel ini sudah terdaftar' });
+    }
+    settings.sources.push({ id: cleanId, name: cleanName, enabled: true });
+    saveSettings(settings);
+    return res.json({ ok: true, sources: settings.sources });
+});
+
+// Toggle channel source ON/OFF
+app.put('/api/settings/sources/:id/toggle', (req, res) => {
+    const id = decodeURIComponent(req.params.id);
+    const settings = loadSettings();
+    const source = settings.sources.find(s => String(s.id) === String(id));
+    if (!source) {
+        return res.status(404).json({ ok: false, message: 'Sumber channel tidak ditemukan' });
+    }
+    source.enabled = !source.enabled;
+    saveSettings(settings);
+    return res.json({ ok: true, source, sources: settings.sources });
+});
+
+// Delete channel source
+app.delete('/api/settings/sources/:id', (req, res) => {
+    const id = decodeURIComponent(req.params.id);
+    const settings = loadSettings();
+    settings.sources = settings.sources.filter(s => String(s.id) !== String(id));
+    saveSettings(settings);
+    return res.json({ ok: true, sources: settings.sources });
+});
+
+// Change 6-Digit PIN
+app.post('/api/settings/pin', (req, res) => {
+    const { oldPin, newPin } = req.body;
+    const settings = loadSettings();
+    if (String(oldPin) !== String(settings.pin)) {
+        return res.status(400).json({ ok: false, message: 'PIN Lama salah' });
+    }
+    if (!newPin || String(newPin).length !== 6 || !/^\d+$/.test(String(newPin))) {
+        return res.status(400).json({ ok: false, message: 'PIN Baru harus berupa 6 digit angka' });
+    }
+    settings.pin = String(newPin);
+    saveSettings(settings);
+    return res.json({ ok: true, message: 'PIN 6-digit berhasil diperbarui' });
 });
 
 app.get('/status', (req, res) => {

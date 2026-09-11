@@ -590,6 +590,268 @@
         .pin-card.shake {
             animation: pinShake 0.4s ease;
         }
+
+        /* Admin & Header Controls */
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-btn {
+            padding: 8px 14px;
+            font-size: 13px;
+            border-radius: 10px;
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            padding: 8px 12px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-danger:hover {
+            background: rgba(239, 68, 68, 0.3);
+        }
+
+        /* Modal Overlay & Card */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            opacity: 1;
+            transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .modal-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .modal-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            width: 100%;
+            max-width: 680px;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 28px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            animation: modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes modalSlideUp {
+            from { opacity: 0; transform: translateY(20px) scale(0.97); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .modal-close {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .modal-close:hover {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        .admin-section {
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 18px;
+        }
+
+        .section-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .section-desc {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+        }
+
+        .source-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .source-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid var(--border);
+            padding: 12px 16px;
+            border-radius: 12px;
+        }
+
+        .source-info {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .source-name {
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--text-primary);
+        }
+
+        .source-id {
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-family: monospace;
+        }
+
+        .source-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* Toggle Switch */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #334155;
+            transition: .3s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #22c55e;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(20px);
+        }
+
+        .add-source-box, .pin-change-box {
+            margin-top: 14px;
+            padding-top: 14px;
+            border-top: 1px dashed var(--border);
+        }
+
+        .form-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 10px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .form-input {
+            flex: 1;
+            min-width: 160px;
+            padding: 9px 13px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 13px;
+            outline: none;
+        }
+
+        .form-input:focus {
+            border-color: var(--accent);
+        }
+
+        .btn-accent {
+            background: linear-gradient(135deg, #6366f1, #a855f7);
+            color: white;
+            border: none;
+            padding: 9px 16px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn-accent:hover {
+            opacity: 0.9;
+        }
+
+        .form-msg {
+            font-size: 12px;
+            margin-top: 8px;
+        }
     </style>
 </head>
 <body>
@@ -599,12 +861,63 @@
                 <div class="brand-icon">⚡</div>
                 <div class="brand-title">Elzoi OTP Dashboard</div>
             </div>
-            <div class="status-badge">
-                <div class="pulse-dot"></div>
-                <span id="connection-status">Live Connected</span>
+            <div class="header-actions">
+                <button class="btn btn-secondary nav-btn" onclick="openAdminModal()">⚙️ Setting Admin</button>
+                <button class="btn btn-danger nav-btn" onclick="logoutSession()">🚪 Logout</button>
+                <div class="status-badge">
+                    <div class="pulse-dot"></div>
+                    <span id="connection-status">Live Connected</span>
+                </div>
             </div>
         </div>
     </header>
+
+    <!-- Admin Settings Modal -->
+    <div id="admin-modal" class="modal-overlay hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="modal-title">⚙️ Pengaturan Admin & Sumber Telegram</div>
+                <button class="modal-close" onclick="closeAdminModal()">✕</button>
+            </div>
+
+            <div class="admin-sections">
+                <!-- Section 1: Telegram Channel Sources -->
+                <div class="admin-section">
+                    <div class="section-title">📡 Sumber Chat Telegram</div>
+                    <div class="section-desc">Kelola channel Telegram penampung SMS OTP (Aktifkan/Matikan, Tambah, atau Hapus).</div>
+
+                    <div id="source-list" class="source-list">
+                        <!-- Dynamic sources list rendered via JS -->
+                    </div>
+
+                    <!-- Add Source Form -->
+                    <div class="add-source-box">
+                        <div class="form-title">➕ Tambah Sumber Channel Baru</div>
+                        <div class="form-row">
+                            <input type="text" id="new-source-id" class="form-input" placeholder="ID Chat / Username (misal: -1001234567890 atau @username)">
+                            <input type="text" id="new-source-name" class="form-input" placeholder="Nama Channel (misal: Channel OTP VCC)">
+                            <button class="btn btn-accent" onclick="addSource()">+ Tambah</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 2: Security & PIN Management -->
+                <div class="admin-section" style="margin-top: 20px;">
+                    <div class="section-title">🔑 Pengaturan PIN Keamanan (6 Digit)</div>
+                    <div class="section-desc">Ubah PIN 6-digit yang digunakan untuk masuk ke dashboard.</div>
+
+                    <div class="pin-change-box">
+                        <div class="form-row">
+                            <input type="password" id="old-pin-input" maxlength="6" class="form-input" placeholder="PIN Lama (6 digit)">
+                            <input type="password" id="new-pin-input" maxlength="6" class="form-input" placeholder="PIN Baru (6 digit)">
+                            <button class="btn btn-accent" onclick="changePin()">Ubah PIN</button>
+                        </div>
+                        <div id="pin-change-msg" class="form-msg"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- PIN Login Overlay -->
     <div id="pin-overlay">
@@ -958,6 +1271,168 @@
                 statusEl.innerText = 'Reconnecting...';
                 statusEl.parentElement.style.borderColor = 'rgba(239, 68, 68, 0.2)';
             };
+        }
+
+        // ======= LOGOUT & ADMIN SETTINGS LOGIC =======
+        function logoutSession() {
+            closeAdminModal();
+            lockDashboard();
+            showToast('🔒 Sesi telah diakhiri / Logout');
+        }
+
+        async function openAdminModal() {
+            document.getElementById('admin-modal').classList.remove('hidden');
+            await loadAdminSettings();
+        }
+
+        function closeAdminModal() {
+            document.getElementById('admin-modal').classList.add('hidden');
+        }
+
+        async function loadAdminSettings() {
+            try {
+                const res = await fetch('/api/settings');
+                const data = await res.json();
+                if (data.ok) {
+                    renderSourcesList(data.sources);
+                }
+            } catch (err) {
+                showToast('⚠️ Gagal memuat data pengaturan admin');
+            }
+        }
+
+        function renderSourcesList(sources) {
+            const list = document.getElementById('source-list');
+            if (!sources || sources.length === 0) {
+                list.innerHTML = '<div style="color: var(--text-secondary); font-size: 13px;">Belum ada sumber channel terdaftar.</div>';
+                return;
+            }
+            list.innerHTML = sources.map(s => `
+                <div class="source-item">
+                    <div class="source-info">
+                        <span class="source-name">${s.name}</span>
+                        <span class="source-id">ID / Username: ${s.id}</span>
+                    </div>
+                    <div class="source-actions">
+                        <label class="switch" title="${s.enabled ? 'Channel Aktif (ON)' : 'Channel Nonaktif (OFF)'}">
+                            <input type="checkbox" ${s.enabled ? 'checked' : ''} onchange="toggleSource('${encodeURIComponent(s.id)}')">
+                            <span class="slider"></span>
+                        </label>
+                        <button class="btn-danger" onclick="deleteSource('${encodeURIComponent(s.id)}')">Hapus</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function toggleSource(id) {
+            try {
+                const res = await fetch(`/api/settings/sources/${id}/toggle`, { method: 'PUT' });
+                const data = await res.json();
+                if (data.ok) {
+                    const statusText = data.source.enabled ? 'DI-ON-KAN 🟢' : 'DI-OFF-KAN 🔴';
+                    showToast(`STATUS CHANNEL: ${data.source.name} ${statusText}`);
+                    renderSourcesList(data.sources);
+                }
+            } catch (err) {
+                showToast('⚠️ Gagal mengubah status channel');
+            }
+        }
+
+        async function addSource() {
+            const idInput = document.getElementById('new-source-id');
+            const nameInput = document.getElementById('new-source-name');
+            const id = idInput.value.trim();
+            const name = nameInput.value.trim();
+
+            if (!id || !name) {
+                showToast('⚠️ Masukkan ID Chat/Username dan Nama Channel');
+                return;
+            }
+            try {
+                const res = await fetch('/api/settings/sources', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id, name })
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    showToast(`✅ Sumber ${name} berhasil ditambahkan!`);
+                    idInput.value = '';
+                    nameInput.value = '';
+                    renderSourcesList(data.sources);
+                } else {
+                    showToast(`❌ ${data.message}`);
+                }
+            } catch (err) {
+                showToast('⚠️ Gagal menambah sumber channel');
+            }
+        }
+
+        async function deleteSource(id) {
+            if (!confirm('Apakah Anda yakin ingin menghapus sumber channel ini?')) return;
+            try {
+                const res = await fetch(`/api/settings/sources/${id}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (data.ok) {
+                    showToast('🗑️ Sumber channel terhapus');
+                    renderSourcesList(data.sources);
+                }
+            } catch (err) {
+                showToast('⚠️ Gagal menghapus sumber channel');
+            }
+        }
+
+        async function changePin() {
+            const oldPin = document.getElementById('old-pin-input').value.trim();
+            const newPin = document.getElementById('new-pin-input').value.trim();
+            const msgEl = document.getElementById('pin-change-msg');
+            msgEl.textContent = '';
+
+            if (!oldPin || !newPin) {
+                msgEl.textContent = '❌ Masukkan PIN Lama dan PIN Baru';
+                msgEl.style.color = '#ef4444';
+                return;
+            }
+            if (newPin.length !== 6 || !/^\d+$/.test(newPin)) {
+                msgEl.textContent = '❌ PIN Baru harus 6 digit angka';
+                msgEl.style.color = '#ef4444';
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/settings/pin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ oldPin, newPin })
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    msgEl.textContent = '✅ PIN 6-digit berhasil diubah!';
+                    msgEl.style.color = '#22c55e';
+                    document.getElementById('old-pin-input').value = '';
+                    document.getElementById('new-pin-input').value = '';
+                    showToast('🔑 PIN Berhasil Diubah! Silakan gunakan PIN baru untuk login berikutnya.');
+                } else {
+                    msgEl.textContent = `❌ ${data.message}`;
+                    msgEl.style.color = '#ef4444';
+                }
+            } catch (err) {
+                msgEl.textContent = '⚠️ Gagal mengubah PIN';
+                msgEl.style.color = '#ef4444';
+            }
+        }
+
+        // Auto open admin modal if URL is /admin or #admin
+        if (window.location.pathname === '/admin' || window.location.hash === '#admin') {
+            window.addEventListener('load', () => {
+                setTimeout(() => {
+                    if (!document.getElementById('pin-overlay').classList.contains('hidden')) {
+                        // User needs to login with PIN first
+                    } else {
+                        openAdminModal();
+                    }
+                }, 300);
+            });
         }
 
         // End of script

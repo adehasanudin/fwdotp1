@@ -1,0 +1,15 @@
+{
+  "pin": "123456",
+  "sources": [
+    {
+      "id": "-1003976311793",
+      "name": "Atmosphere Sms",
+      "enabled": true
+    },
+    {
+      "id": "-1003845779628",
+      "name": "Otp quin",
+      "enabled": true
+    }
+  ]
+}
