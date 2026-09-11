@@ -4,7 +4,7 @@ import os
 import re
 import sys
 import urllib.request
-from pyrogram import Client, filters, errors, enums
+from pyrogram import Client, filters, errors, enums, idle
 from pyrogram.types import Message
 from typing import Set
 
@@ -419,19 +419,25 @@ async def start_bot():
 
     # Keep bot running smoothly
     try:
-        while True:
-            await asyncio.sleep(1)
+        await idle()
     except (KeyboardInterrupt, SystemExit, asyncio.CancelledError):
         pass
     finally:
         logger.info("Shutting down Telegram clients...")
         if bot_api:
-            bot_api.stop()
-        if bot_task:
+            try:
+                bot_api.stop()
+            except Exception:
+                pass
+        if bot_task and not bot_task.done():
             bot_task.cancel()
-        if fallback_task:
+        if fallback_task and not fallback_task.done():
             fallback_task.cancel()
-        await user_app.stop()
+        if getattr(user_app, "is_connected", False):
+            try:
+                await user_app.stop()
+            except Exception as e:
+                logger.debug(f"Userbot shutdown note: {e}")
 
 
 if __name__ == "__main__":
