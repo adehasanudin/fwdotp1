@@ -11,8 +11,14 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.get('/admin', (req, res) => {
+// Admin Secret Path — hanya bisa diakses via URL rahasia
+const ADMIN_SECRET = process.env.ADMIN_SECRET || 'admin-secret-elzoi';
+app.get(`/admin-${ADMIN_SECRET}`, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+// Block public /admin route
+app.get('/admin', (req, res) => {
+    return res.status(404).send('Not Found');
 });
 
 const PORT = process.env.PORT || process.env.WA_PORT || 4001;
@@ -49,22 +55,31 @@ function broadcastSSE(data) {
 }
 
 function loadSettings() {
+    let settings;
     if (fs.existsSync(SETTINGS_FILE)) {
         try {
-            return JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf-8'));
+            settings = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf-8'));
         } catch (e) {
             console.error('[Web Server] Error reading settings.json:', e.message);
         }
     }
-    const defaultSettings = {
-        pin: process.env.DASHBOARD_PIN || '123456',
-        sources: [
-            { id: '-1003976311793', name: 'Atmosphere Sms', enabled: true },
-            { id: '-1003845779628', name: 'Otp quin', enabled: true }
-        ]
-    };
-    saveSettings(defaultSettings);
-    return defaultSettings;
+    if (!settings) {
+        settings = {
+            pin: process.env.DASHBOARD_PIN || '123456',
+            sources: [
+                { id: '-1003976311793', name: 'Atmosphere Sms', enabled: true },
+                { id: '-1003845779628', name: 'Otp quin', enabled: true }
+            ]
+        };
+        saveSettings(settings);
+    }
+    // Sync PIN from .env if DASHBOARD_PIN is set and differs from settings.json
+    if (process.env.DASHBOARD_PIN && settings.pin !== process.env.DASHBOARD_PIN) {
+        settings.pin = process.env.DASHBOARD_PIN;
+        saveSettings(settings);
+        console.log('[Web Server] PIN disinkronisasi dari .env ke settings.json');
+    }
+    return settings;
 }
 
 function saveSettings(settings) {

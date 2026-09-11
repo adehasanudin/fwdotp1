@@ -862,7 +862,7 @@
                 <div class="brand-title">Elzoi OTP Dashboard</div>
             </div>
             <div class="header-actions">
-                <button class="btn btn-secondary nav-btn" onclick="openAdminModal()">⚙️ Setting Admin</button>
+                <button id="admin-settings-btn" class="btn btn-secondary nav-btn" onclick="openAdminModal()" style="display:none">⚙️ Setting Admin</button>
                 <button class="btn btn-danger nav-btn" onclick="logoutSession()">🚪 Logout</button>
                 <div class="status-badge">
                     <div class="pulse-dot"></div>
@@ -1422,17 +1422,17 @@
             }
         }
 
-        // Auto open admin modal if URL is /admin or #admin
-        if (window.location.pathname === '/admin' || window.location.hash === '#admin') {
-            window.addEventListener('load', () => {
-                setTimeout(() => {
-                    if (!document.getElementById('pin-overlay').classList.contains('hidden')) {
-                        // User needs to login with PIN first
-                    } else {
-                        openAdminModal();
-                    }
-                }, 300);
-            });
+        // Detect admin access via secret URL: /admin-XXXX
+        const isAdminPath = /^\/admin-.+$/.test(window.location.pathname);
+        if (isAdminPath) {
+            // Mark this session as admin
+            sessionStorage.setItem('is_admin', '1');
+        }
+
+        const isAdmin = sessionStorage.getItem('is_admin') === '1';
+        if (isAdmin) {
+            const adminBtn = document.getElementById('admin-settings-btn');
+            if (adminBtn) adminBtn.style.display = '';
         }
 
         // End of script
