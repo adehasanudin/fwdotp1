@@ -1021,6 +1021,7 @@
                 const data = await res.json();
                 if (data.ok) {
                     sessionStorage.setItem(SESSION_KEY, Date.now().toString());
+                    sessionStorage.setItem('otp_auth_pin', currentPin);
                     showDashboard();
                 } else {
                     document.getElementById('pin-error').textContent = '❌ PIN salah, coba lagi';
@@ -1053,13 +1054,13 @@
 
         function lockDashboard() {
             sessionStorage.removeItem(SESSION_KEY);
+            sessionStorage.removeItem('otp_auth_pin');
             clearTimeout(inactivityTimer);
             if (sseSource) { sseSource.close(); sseSource = null; }
             document.getElementById('main-content').style.display = 'none';
             document.getElementById('pin-overlay').classList.remove('hidden');
             currentPin = '';
             updatePinDots();
-            document.getElementById('pin-error').textContent = '';
         }
 
         function resetInactivityTimer() {
@@ -1070,17 +1071,35 @@
             }, SESSION_DURATION);
         }
 
-        // Check existing session on load
-        (function checkSession() {
+        // Check existing session on load & verify active PIN validity
+        async function checkSession() {
             const stored = sessionStorage.getItem(SESSION_KEY);
-            if (stored && Date.now() - parseInt(stored) < SESSION_DURATION) {
-                showDashboard();
+            const storedPin = sessionStorage.getItem('otp_auth_pin');
+            if (stored && storedPin && Date.now() - parseInt(stored) < SESSION_DURATION) {
+                try {
+                    const res = await fetch('/api/auth', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ pin: storedPin })
+                    });
+                    const data = await res.json();
+                    if (data.ok) {
+                        showDashboard();
+                        return;
+                    }
+                } catch (e) {}
             }
+            lockDashboard();
+        }
+
+        (function() {
+            checkSession();
             // Support keyboard on PIN screen
             document.addEventListener('keydown', (e) => {
-                if (document.getElementById('pin-overlay').classList.contains('hidden')) return;
-                if (e.key >= '0' && e.key <= '9') pinPress(e.key);
-                if (e.key === 'Backspace') pinDelete();
+                if (!document.getElementById('pin-overlay').classList.contains('hidden')) {
+                    if (e.key >= '0' && e.key <= '9') pinPress(e.key);
+                    if (e.key === 'Backspace') pinDelete();
+                }
             });
         })();
 
@@ -1240,7 +1259,16 @@
                 try {
                     const eventData = JSON.parse(e.data);
                     
-                    // Case 1: Notification of OTP copied by any visitor
+                    // Case 1: PIN Changed -> Logout all active sessions immediately
+                    if (eventData.type === 'pin_changed') {
+                        closeAdminModal();
+                        lockDashboard();
+                        document.getElementById('pin-error').textContent = '🔒 PIN diubah oleh Admin. Sesi di-logout!';
+                        showToast('🔒 PIN Diubah! Seluruh sesi di-logout.');
+                        return;
+                    }
+
+                    // Case 2: Notification of OTP copied by any visitor
                     if (eventData.type === 'otp_copied') {
                         const target = allOtps.find(o => String(o.id) === String(eventData.id));
                         if (target) {

@@ -247,8 +247,14 @@ app.post('/api/settings/pin', (req, res) => {
     }
     settings.pin = String(newPin);
     saveSettings(settings);
+
+    // Broadcast SSE to force logout all active sessions immediately
+    broadcastSSE({ type: 'pin_changed' });
+    console.log(`[Web Dashboard] 🔑 PIN telah diubah. Memutus seluruh sesi aktif.`);
+
     return res.json({ ok: true, message: 'PIN 6-digit berhasil diperbarui' });
 });
+
 
 app.get('/status', (req, res) => {
     return res.json({ status: 'online', port: PORT, connectedClients: sseClients.length, totalOtps: otpHistory.length });
