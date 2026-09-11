@@ -169,8 +169,12 @@ app.get('/api/events', (req, res) => {
 app.post('/api/otp', (req, res) => {
     try {
         const { otp, vcc, merchant, amount, raw_text } = req.body;
-        if (!otp && !raw_text) {
-            return res.status(400).json({ status: 'error', message: 'OTP or raw_text is required.' });
+        
+        // Strictly ignore messages that do NOT contain valid numeric OTP digits
+        const cleanOtp = String(otp || '').trim();
+        if (!cleanOtp || cleanOtp === '??????' || !/^\d+$/.test(cleanOtp)) {
+            console.log('[Web Dashboard] ⚠️ Pesan non-OTP diabaikan (tidak mengandung angka OTP).');
+            return res.status(400).json({ status: 'ignored', message: 'Pesan diabaikan karena bukan SMS OTP.' });
         }
 
         const now = new Date();
@@ -178,7 +182,7 @@ app.post('/api/otp', (req, res) => {
 
         const otpItem = {
             id: Date.now(),
-            otp: otp || '??????',
+            otp: cleanOtp,
             vcc: vcc || '?',
             merchant: merchant || '?',
             amount: amount || '?',

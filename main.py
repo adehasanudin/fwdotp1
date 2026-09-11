@@ -248,18 +248,30 @@ def send_to_web_dashboard(raw_text: str, source_name: str = ""):
     if not raw_text:
         return
 
-    # Format 1 (Atmosphere Sms): 'Use code 123456 to approve...'
-    # Format 2 (Otp quin):       '🔐 Kode OTP: 123456\n📩 Pesan: Use code 123456 to approve...'
+    # Extract OTP code using flexible regex patterns
     otp_match = re.search(r'[Uu]se code (\d+)', raw_text)
     if not otp_match:
-        # Fallback: parse 'Kode OTP: 123456' line (Otp quin format)
-        otp_match = re.search(r'[Kk]ode OTP[:\s]+([\d]+)', raw_text)
+        otp_match = re.search(r'(?:[Kk]ode\s+)?OTP[:\s]+([\d]+)', raw_text, re.IGNORECASE)
+    if not otp_match:
+        otp_match = re.search(r'(?:code|kode|pin)\s+(?:is|adalah)?\s*[:\s]*(\d{4,8})', raw_text, re.IGNORECASE)
+    if not otp_match:
+        if re.search(r'\b(otp|kode|code|verifikasi|verification|passcode|pin)\b', raw_text, re.IGNORECASE):
+            otp_match = re.search(r'\b(\d{4,8})\b', raw_text)
+
+    # STRICT CHECK: If NO OTP code found, ignore message completely (e.g. promo broadcast, chat, non-OTP)
+    if not otp_match:
+        logger.info("⚠️ Pesan diabaikan karena bukan pesan SMS OTP (tidak ditemukan kode angka OTP).")
+        return
+
+    otp_code = otp_match.group(1).strip()
+    if not otp_code or not otp_code.isdigit():
+        logger.info("⚠️ Pesan diabaikan karena kode angka OTP tidak valid.")
+        return
 
     card_match = re.search(r'card ending (\d+)', raw_text)
     amount_match = re.search(r'transaction of ([A-Z]+) ([\d\.]+) to', raw_text)
     merchant_match = re.search(r'transaction of [A-Z]+ [\d\.]+ to (.+?) with card', raw_text)
 
-    otp_code = otp_match.group(1) if otp_match else ""
     card = card_match.group(1) if card_match else "?"
     merchant = merchant_match.group(1).strip() if merchant_match else "?"
     currency = amount_match.group(1) if amount_match else ""
@@ -281,7 +293,7 @@ def send_to_web_dashboard(raw_text: str, source_name: str = ""):
     )
     try:
         with urllib.request.urlopen(req, timeout=5) as resp:
-            logger.info("🌐 OTP berhasil dikirim ke Web Dashboard (http://IP-VPS:4001)")
+            logger.info(f"🌐 OTP ({otp_code}) berhasil dikirim ke Web Dashboard")
     except Exception as e:
         logger.debug(f"Web Dashboard note: {e}")
 
