@@ -38,6 +38,9 @@ class Config:
     raw_keywords = os.getenv("KEYWORDS", "").strip()
     KEYWORDS: List[str] = [k.strip().lower() for k in raw_keywords.split(",") if k.strip()]
 
+    WA_TARGET_NUMBER: str = os.getenv("WA_TARGET_NUMBER", "").strip()
+    WA_SERVER_URL: str = os.getenv("WA_SERVER_URL", "http://127.0.0.1:4001/send-wa").strip()
+
     @classmethod
     def validate(cls):
         """Validate required configuration values."""
@@ -48,8 +51,6 @@ class Config:
             errors.append("API_HASH is required in .env")
         if not cls.SOURCE_CHATS:
             errors.append("SOURCE_CHAT_ID is required in .env")
-        if not cls.TARGET_CHATS:
-            errors.append("TARGET_CHAT_ID is required in .env")
         
         if cls.FORWARD_MODE not in ["copy", "forward"]:
             logger.warning("FORWARD_MODE invalid, default to 'copy'")

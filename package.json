@@ -1,0 +1,14 @@
+{
+  "name": "fwdotp-web-dashboard",
+  "version": "1.0.0",
+  "description": "Real-Time Web OTP Dashboard Server for Telegram Auto-Forwarder",
+  "main": "wa_server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node wa_server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "dotenv": "^16.4.5"
+  }
+}

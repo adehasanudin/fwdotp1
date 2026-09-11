@@ -3,6 +3,7 @@ import json
 import os
 import re
 import sys
+import urllib.request
 from pyrogram import Client, filters, errors, enums
 from pyrogram.types import Message
 from typing import Set
@@ -103,6 +104,55 @@ def format_otp_message(text: str) -> str:
     return "\n".join(cleaned).strip()
 
 
+def format_wa_otp_message(text: str) -> str:
+    """Format raw SMS into WhatsApp markdown style."""
+    if not text:
+        return text
+
+    otp_match = re.search(r'[Uu]se code (\d+)', text)
+    card_match = re.search(r'card ending (\d+)', text)
+    amount_match = re.search(r'transaction of ([A-Z]+) ([\d\.]+) to', text)
+    merchant_match = re.search(r'transaction of [A-Z]+ [\d\.]+ to (.+?) with card', text)
+
+    if otp_match:
+        otp_code = otp_match.group(1)
+        card = card_match.group(1) if card_match else "?"
+        merchant = merchant_match.group(1).strip() if merchant_match else "?"
+        currency = amount_match.group(1) if amount_match else ""
+        amount_val = amount_match.group(2) if amount_match else "?"
+
+        return (
+            f"*OTP:* `{otp_code}`\n\n"
+            f"💳 VCC: ••••{card}\n"
+            f"🏪 Merchant: *{merchant}*\n"
+            f"💰 Amount: {currency} {amount_val}"
+        )
+    return text
+
+
+def send_to_whatsapp(raw_text: str):
+    """Sends OTP notification to WhatsApp target number via local Node.js REST API."""
+    if not Config.WA_TARGET_NUMBER or not Config.WA_SERVER_URL:
+        return
+
+    wa_text = format_wa_otp_message(raw_text)
+    payload = json.dumps({
+        "to": Config.WA_TARGET_NUMBER,
+        "message": wa_text
+    }).encode("utf-8")
+
+    req = urllib.request.Request(
+        Config.WA_SERVER_URL,
+        data=payload,
+        headers={"Content-Type": "application/json"}
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            logger.info(f"✅ OTP WhatsApp berhasil terkirim ke {Config.WA_TARGET_NUMBER}")
+    except Exception as e:
+        logger.error(f"❌ Gagal mengirim OTP ke WhatsApp ({Config.WA_TARGET_NUMBER}): {e}")
+
+
 
 def matches_keywords(text: str) -> bool:
     """Check if message matches configured keywords filter."""
@@ -136,7 +186,7 @@ async def send_to_target(raw_text: str, target_chat):
 
 
 def is_source_chat(message: Message) -> bool:
-    """Check if message originates from configured source chats or Atmosphere channel."""
+    """Check if message originates from configured source chats or known OTP channels."""
     if not message or not message.chat:
         return False
 
@@ -152,10 +202,56 @@ def is_source_chat(message: Message) -> bool:
             if clean_s and (clean_s == username or clean_s in chat_title):
                 return True
 
+    # Auto-detect known OTP channel titles
     if "atmosphere sms" in chat_title:
+        return True
+    if "otp quin" in chat_title:
         return True
 
     return False
+
+
+def send_to_web_dashboard(raw_text: str, source_name: str = ""):
+    """Sends structured OTP data to local Web OTP Dashboard REST API."""
+    if not raw_text:
+        return
+
+    # Format 1 (Atmosphere Sms): 'Use code 123456 to approve...'
+    # Format 2 (Otp quin):       '🔐 Kode OTP: 123456\n📩 Pesan: Use code 123456 to approve...'
+    otp_match = re.search(r'[Uu]se code (\d+)', raw_text)
+    if not otp_match:
+        # Fallback: parse 'Kode OTP: 123456' line (Otp quin format)
+        otp_match = re.search(r'[Kk]ode OTP[:\s]+([\d]+)', raw_text)
+
+    card_match = re.search(r'card ending (\d+)', raw_text)
+    amount_match = re.search(r'transaction of ([A-Z]+) ([\d\.]+) to', raw_text)
+    merchant_match = re.search(r'transaction of [A-Z]+ [\d\.]+ to (.+?) with card', raw_text)
+
+    otp_code = otp_match.group(1) if otp_match else ""
+    card = card_match.group(1) if card_match else "?"
+    merchant = merchant_match.group(1).strip() if merchant_match else "?"
+    currency = amount_match.group(1) if amount_match else ""
+    amount_val = amount_match.group(2) if amount_match else "?"
+    amount_str = f"{currency} {amount_val}".strip() if amount_match else "?"
+
+    payload = json.dumps({
+        "otp": otp_code,
+        "vcc": card,
+        "merchant": merchant,
+        "amount": amount_str,
+        "raw_text": raw_text
+    }).encode("utf-8")
+
+    req = urllib.request.Request(
+        "http://127.0.0.1:4001/api/otp",
+        data=payload,
+        headers={"Content-Type": "application/json"}
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            logger.info("🌐 OTP berhasil dikirim ke Web Dashboard (http://IP-VPS:4001)")
+    except Exception as e:
+        logger.debug(f"Web Dashboard note: {e}")
 
 
 async def process_and_forward_message(message: Message):
@@ -178,22 +274,8 @@ async def process_and_forward_message(message: Message):
         logger.info("Pesan diabaikan (tidak memenuhi kata kunci filter).")
         return
 
-    # 1. Send formatted OTP message via Userbot to target chats
-    for target in Config.TARGET_CHATS:
-        await send_to_target(text_content, target)
-
-    # 2. Broadcast formatted message via Telegram Bot HTTP API to /start subscribers
-    if bot_api and subscribers and text_content:
-        formatted = format_otp_message(text_content)
-        logger.info(f"Broadcasting formatted OTP via Bot API ke {len(subscribers)} subscriber...")
-        for sub_id in list(subscribers):
-            sent = bot_api.send_message(sub_id, formatted, parse_mode="HTML")
-            if sent:
-                logger.info(f"✅ Broadcast OTP sukses ke Chat ID: {sub_id}")
-            else:
-                logger.error(f"❌ Broadcast OTP gagal ke Chat ID: {sub_id}")
-    elif not subscribers:
-        logger.warning("⚠️ Belum ada subscriber terdaftar! Tekan /start di @ElzoiOtp1Bot untuk mendaftar.")
+    # Push OTP directly to Web Dashboard (http://IP-VPS:4001)
+    send_to_web_dashboard(text_content)
 
 
 # Real-time event handlers
@@ -235,9 +317,10 @@ async def start_bot():
     me_user = await user_app.get_me()
     logger.info(f"Userbot Logged in as: {me_user.first_name} (@{me_user.username or 'No Username'}) [ID: {me_user.id}]")
 
-    # Warm up peer cache and auto-detect Atmosphere Sms channel ID
-    logger.info("Warming up channel peer cache & discovering Atmosphere Sms channel...")
+    # Warm up peer cache and auto-detect known OTP source channels
+    logger.info("Warming up channel peer cache & discovering OTP source channels...")
     atmosphere_found = False
+    otp_quin_found = False
     async for dialog in user_app.get_dialogs():
         title = (dialog.chat.title or "").lower()
         if "atmosphere sms" in title:
@@ -245,12 +328,23 @@ async def start_bot():
             logger.info(f"🎯 Terdeteksi Channel: '{dialog.chat.title}' [Chat ID: {dialog.chat.id}]")
             if dialog.chat.id not in Config.SOURCE_CHATS:
                 Config.SOURCE_CHATS.append(dialog.chat.id)
+        if "otp quin" in title:
+            otp_quin_found = True
+            logger.info(f"🎯 Terdeteksi Channel: '{dialog.chat.title}' [Chat ID: {dialog.chat.id}]")
+            if dialog.chat.id not in Config.SOURCE_CHATS:
+                Config.SOURCE_CHATS.append(dialog.chat.id)
 
     if not atmosphere_found:
         logger.warning(
             "⚠️ Channel 'Atmosphere Sms' TIDAK DITEMUKAN di daftar chat akun Telegram Userbot!\n"
-            "   Pastikan akun Telegram yang di-login-kan di VPS SUDAH JOIN / GABUNG ke channel Atmosphere Sms!"
+            "   Pastikan akun Telegram yang di-login-kan SUDAH JOIN ke channel Atmosphere Sms!"
         )
+    if not otp_quin_found:
+        logger.warning(
+            "⚠️ Channel 'Otp quin' TIDAK DITEMUKAN di daftar chat akun Telegram Userbot!\n"
+            "   Pastikan akun Telegram yang di-login-kan SUDAH JOIN ke channel Otp quin!"
+        )
+
 
     # Seed recent channel history so old OTP messages are NOT sent on restart
     logger.info("Mengindeks pesan-pesan lama di channel agar TIDAK terkirim ulang saat restart...")

@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elzoi OTP Dashboard - Live Feed</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0f172a;
+            --bg-card: #1e293b;
+            --bg-card-hover: #334155;
+            --accent: #6366f1;
+            --accent-hover: #4f46e5;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --success: #22c55e;
+            --border: #334155;
+            --code-bg: #0f172a;
+            --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background-color: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            padding: 16px 24px;
+        }
+
+        .header-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #6366f1, #a855f7);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+        }
+
+        .brand-title {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            background: linear-gradient(to right, #ffffff, #cbd5e1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            background-color: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.2);
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--success);
+        }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--success);
+            border-radius: 50%;
+            position: relative;
+        }
+
+        .pulse-dot::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            background-color: var(--success);
+            border-radius: 50%;
+            animation: pulse 1.8s infinite ease-in-out;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.8; }
+            100% { transform: scale(2.8); opacity: 0; }
+        }
+
+        main {
+            max-width: 1200px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 24px;
+            flex: 1;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 260px;
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px 16px 12px 42px;
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-size: 14px;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .search-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+            font-size: 16px;
+        }
+
+        .btn {
+            padding: 12px 20px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .btn-secondary {
+            background-color: var(--bg-card);
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--bg-card-hover);
+            color: var(--text-primary);
+        }
+
+        .otp-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 20px;
+        }
+
+        .otp-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: var(--shadow);
+            transition: transform 0.2s, border-color 0.2s;
+            position: relative;
+            overflow: hidden;
+            animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .otp-card:hover {
+            transform: translateY(-3px);
+            border-color: var(--accent);
+        }
+
+        .otp-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(to bottom, #6366f1, #a855f7);
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Card state: uncopied — amber glow */
+        .otp-card.uncopied {
+            border-color: rgba(245, 158, 11, 0.4);
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.1), var(--shadow);
+        }
+
+        .otp-card.uncopied::before {
+            background: linear-gradient(to bottom, #f59e0b, #ef4444);
+        }
+
+        /* Card state: copied — soft green */
+        .otp-card.copied {
+            border-color: rgba(34, 197, 94, 0.25);
+            opacity: 0.75;
+        }
+
+        .otp-card.copied::before {
+            background: linear-gradient(to bottom, #22c55e, #16a34a);
+        }
+
+        .otp-card.copied:hover {
+            opacity: 1;
+        }
+
+
+        .otp-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .otp-label {
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-secondary);
+        }
+
+        .time-stamp {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .otp-code-box {
+            background-color: var(--code-bg);
+            border: 1.5px dashed rgba(99, 102, 241, 0.4);
+            border-radius: 12px;
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .otp-code-box:hover {
+            border-color: var(--accent);
+            background-color: rgba(99, 102, 241, 0.08);
+        }
+
+        .otp-code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 28px;
+            font-weight: 700;
+            color: #818cf8;
+            letter-spacing: 3px;
+        }
+
+        .copy-badge {
+            font-size: 12px;
+            font-weight: 600;
+            padding: 6px 12px;
+            background-color: var(--accent);
+            color: #ffffff;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .otp-code-box:hover .copy-badge {
+            background-color: var(--accent-hover);
+        }
+
+        /* Uncopied State (Fresh / Glowing Amber-Yellow) */
+        .otp-code-box.uncopied {
+            background-color: rgba(245, 158, 11, 0.08);
+            border: 2px dashed #f59e0b;
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.15);
+        }
+
+        .otp-code-box.uncopied .otp-code {
+            color: #fbbf24;
+            text-shadow: 0 0 10px rgba(251, 191, 36, 0.3);
+        }
+
+        .otp-code-box.uncopied .copy-badge {
+            background-color: #f59e0b;
+            color: #0f172a;
+            font-weight: 700;
+        }
+
+        .otp-status-tag {
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .otp-status-tag.uncopied {
+            background-color: rgba(245, 158, 11, 0.15);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .otp-status-tag.copied {
+            background-color: rgba(34, 197, 94, 0.15);
+            color: #4ade80;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        /* Copied State (Disalin / Soft Green) */
+        .otp-code-box.copied {
+            background-color: rgba(34, 197, 94, 0.05);
+            border: 1.5px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .otp-code-box.copied .otp-code {
+            color: #4ade80;
+        }
+
+        .otp-code-box.copied .copy-badge {
+            background-color: rgba(34, 197, 94, 0.2);
+            color: #4ade80;
+        }
+
+        .details-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .detail-item:last-child {
+            border-bottom: none;
+        }
+
+        .detail-label {
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .detail-value {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .empty-state {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 80px 20px;
+            background-color: var(--bg-card);
+            border: 1px dashed var(--border);
+            border-radius: 20px;
+        }
+
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.6;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background-color: #10b981;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 12px;
+            font-weight: 600;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 1000;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        /* ====== PIN LOGIN SCREEN ====== */
+        #pin-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(ellipse at 50% 0%, rgba(99,102,241,0.18) 0%, #0f172a 70%);
+            backdrop-filter: blur(0px);
+        }
+
+        #pin-overlay.hidden {
+            display: none;
+        }
+
+        .pin-card {
+            background: linear-gradient(145deg, #1e293b, #0f172a);
+            border: 1px solid rgba(99,102,241,0.25);
+            border-radius: 24px;
+            padding: 48px 40px 40px;
+            width: 100%;
+            max-width: 380px;
+            box-shadow: 0 40px 80px rgba(0,0,0,0.5), 0 0 60px rgba(99,102,241,0.1);
+            text-align: center;
+            animation: pinSlideIn 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes pinSlideIn {
+            from { opacity: 0; transform: translateY(24px) scale(0.96); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .pin-lock-icon {
+            width: 72px;
+            height: 72px;
+            border-radius: 20px;
+            background: linear-gradient(135deg, #6366f1, #a855f7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            margin: 0 auto 24px;
+            box-shadow: 0 8px 24px rgba(99,102,241,0.4);
+        }
+
+        .pin-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+
+        .pin-subtitle {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 32px;
+        }
+
+        .pin-dots {
+            display: flex;
+            justify-content: center;
+            gap: 14px;
+            margin-bottom: 32px;
+        }
+
+        .pin-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid rgba(99,102,241,0.4);
+            background: transparent;
+            transition: all 0.2s;
+        }
+
+        .pin-dot.filled {
+            background: linear-gradient(135deg, #6366f1, #a855f7);
+            border-color: #6366f1;
+            box-shadow: 0 0 10px rgba(99,102,241,0.6);
+            transform: scale(1.15);
+        }
+
+        .pin-dot.error {
+            background: #ef4444;
+            border-color: #ef4444;
+            box-shadow: 0 0 10px rgba(239,68,68,0.6);
+        }
+
+        .pin-keypad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 14px;
+            margin-bottom: 16px;
+        }
+
+        .pin-key {
+            height: 62px;
+            border-radius: 14px;
+            background: rgba(51,65,85,0.6);
+            border: 1px solid rgba(99,102,241,0.15);
+            color: var(--text-primary);
+            font-size: 20px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+        }
+
+        .pin-key:hover {
+            background: rgba(99,102,241,0.25);
+            border-color: rgba(99,102,241,0.5);
+            transform: scale(1.04);
+        }
+
+        .pin-key:active {
+            transform: scale(0.95);
+        }
+
+        .pin-key.del {
+            font-size: 18px;
+            color: var(--text-secondary);
+        }
+
+        .pin-key.empty {
+            background: transparent;
+            border: none;
+            cursor: default;
+            pointer-events: none;
+        }
+
+        .pin-error-msg {
+            color: #ef4444;
+            font-size: 13px;
+            min-height: 20px;
+            margin-top: 4px;
+            transition: all 0.2s;
+        }
+
+        @keyframes pinShake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-8px); }
+            40%, 80% { transform: translateX(8px); }
+        }
+
+        .pin-card.shake {
+            animation: pinShake 0.4s ease;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-container">
+            <div class="brand">
+                <div class="brand-icon">⚡</div>
+                <div class="brand-title">Elzoi OTP Dashboard</div>
+            </div>
+            <div class="status-badge">
+                <div class="pulse-dot"></div>
+                <span id="connection-status">Live Connected</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- PIN Login Overlay -->
+    <div id="pin-overlay">
+        <div class="pin-card" id="pin-card">
+            <div class="pin-lock-icon">🔐</div>
+            <div class="pin-title">Elzoi OTP Dashboard</div>
+            <div class="pin-subtitle">Masukkan PIN 6 digit untuk melanjutkan</div>
+
+            <div class="pin-dots" id="pin-dots">
+                <div class="pin-dot" id="dot-0"></div>
+                <div class="pin-dot" id="dot-1"></div>
+                <div class="pin-dot" id="dot-2"></div>
+                <div class="pin-dot" id="dot-3"></div>
+                <div class="pin-dot" id="dot-4"></div>
+                <div class="pin-dot" id="dot-5"></div>
+            </div>
+
+            <div class="pin-keypad">
+                <button class="pin-key" onclick="pinPress('1')">1</button>
+                <button class="pin-key" onclick="pinPress('2')">2</button>
+                <button class="pin-key" onclick="pinPress('3')">3</button>
+                <button class="pin-key" onclick="pinPress('4')">4</button>
+                <button class="pin-key" onclick="pinPress('5')">5</button>
+                <button class="pin-key" onclick="pinPress('6')">6</button>
+                <button class="pin-key" onclick="pinPress('7')">7</button>
+                <button class="pin-key" onclick="pinPress('8')">8</button>
+                <button class="pin-key" onclick="pinPress('9')">9</button>
+                <div class="pin-key empty"></div>
+                <button class="pin-key" onclick="pinPress('0')">0</button>
+                <button class="pin-key del" onclick="pinDelete()">⌫</button>
+            </div>
+
+            <div class="pin-error-msg" id="pin-error"></div>
+        </div>
+    </div>
+
+    <main id="main-content" style="display:none">
+        <div class="toolbar">
+            <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="search-input" class="search-input" placeholder="Cari berdasarkan OTP, Merchant, atau VCC...">
+            </div>
+        </div>
+
+        <div class="otp-grid" id="otp-grid">
+            <div class="empty-state">
+                <div class="empty-icon">📥</div>
+                <h3>Menunggu Pesan SMS OTP...</h3>
+                <p style="color: var(--text-secondary); margin-top: 8px;">Pesan OTP baru yang masuk dari Telegram akan otomatis tampil di sini secara real-time.</p>
+            </div>
+        </div>
+    </main>
+
+    <div class="toast" id="toast">
+        <span>✅ OTP Berhasil Disalin!</span>
+    </div>
+
+    <script>
+        // ======= PIN & SESSION MANAGEMENT =======
+        const SESSION_KEY = 'otp_session_token';
+        const SESSION_DURATION = 30 * 60 * 1000; // 30 menit
+        let inactivityTimer = null;
+        let sseSource = null;
+
+        let currentPin = '';
+
+        function pinPress(digit) {
+            if (currentPin.length >= 6) return;
+            currentPin += digit;
+            updatePinDots();
+            if (currentPin.length === 6) {
+                verifyPin();
+            }
+        }
+
+        function pinDelete() {
+            currentPin = currentPin.slice(0, -1);
+            updatePinDots();
+            document.getElementById('pin-error').textContent = '';
+        }
+
+        function updatePinDots(state = 'normal') {
+            for (let i = 0; i < 6; i++) {
+                const dot = document.getElementById(`dot-${i}`);
+                dot.className = 'pin-dot';
+                if (state === 'error') {
+                    if (i < currentPin.length) dot.classList.add('error');
+                } else {
+                    if (i < currentPin.length) dot.classList.add('filled');
+                }
+            }
+        }
+
+        async function verifyPin() {
+            try {
+                const res = await fetch('/api/auth', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pin: currentPin })
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    sessionStorage.setItem(SESSION_KEY, Date.now().toString());
+                    showDashboard();
+                } else {
+                    document.getElementById('pin-error').textContent = '❌ PIN salah, coba lagi';
+                    document.getElementById('pin-card').classList.add('shake');
+                    updatePinDots('error');
+                    setTimeout(() => {
+                        currentPin = '';
+                        updatePinDots();
+                        document.getElementById('pin-card').classList.remove('shake');
+                    }, 500);
+                }
+            } catch (e) {
+                document.getElementById('pin-error').textContent = '⚠️ Koneksi gagal, coba lagi';
+                currentPin = '';
+                updatePinDots();
+            }
+        }
+
+        function showDashboard() {
+            document.getElementById('pin-overlay').classList.add('hidden');
+            document.getElementById('main-content').style.display = 'block';
+            fetchOtps();
+            initSSE();
+            resetInactivityTimer();
+            document.addEventListener('mousemove', resetInactivityTimer);
+            document.addEventListener('keydown', resetInactivityTimer);
+            document.addEventListener('click', resetInactivityTimer);
+            document.addEventListener('touchstart', resetInactivityTimer);
+        }
+
+        function lockDashboard() {
+            sessionStorage.removeItem(SESSION_KEY);
+            clearTimeout(inactivityTimer);
+            if (sseSource) { sseSource.close(); sseSource = null; }
+            document.getElementById('main-content').style.display = 'none';
+            document.getElementById('pin-overlay').classList.remove('hidden');
+            currentPin = '';
+            updatePinDots();
+            document.getElementById('pin-error').textContent = '';
+        }
+
+        function resetInactivityTimer() {
+            clearTimeout(inactivityTimer);
+            inactivityTimer = setTimeout(() => {
+                lockDashboard();
+                document.getElementById('pin-error').textContent = '🔒 Sesi berakhir karena tidak ada aktivitas';
+            }, SESSION_DURATION);
+        }
+
+        // Check existing session on load
+        (function checkSession() {
+            const stored = sessionStorage.getItem(SESSION_KEY);
+            if (stored && Date.now() - parseInt(stored) < SESSION_DURATION) {
+                showDashboard();
+            }
+            // Support keyboard on PIN screen
+            document.addEventListener('keydown', (e) => {
+                if (document.getElementById('pin-overlay').classList.contains('hidden')) return;
+                if (e.key >= '0' && e.key <= '9') pinPress(e.key);
+                if (e.key === 'Backspace') pinDelete();
+            });
+        })();
+
+        // ======= DASHBOARD LOGIC =======
+        let allOtps = [];
+
+        function playChime() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+                osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15); // A5
+                gain.gain.setValueAtTime(0.15, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.3);
+            } catch(e){}
+        }
+
+        let copiedOtpIds = new Set(JSON.parse(localStorage.getItem('copied_otps') || '[]'));
+
+        function copyCode(id, code) {
+            navigator.clipboard.writeText(code).then(() => {
+                copiedOtpIds.add(String(id));
+                try {
+                    localStorage.setItem('copied_otps', JSON.stringify(Array.from(copiedOtpIds)));
+                } catch(e){}
+                showToast(`✅ Code ${code} Disalin!`);
+                playChime();
+                renderOtps(allOtps);
+            });
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2500);
+        }
+
+        function renderOtps(otps) {
+            const grid = document.getElementById('otp-grid');
+            const search = document.getElementById('search-input').value.toLowerCase().trim();
+
+            const filtered = otps.filter(item => {
+                if (!search) return true;
+                const text = `${item.otp} ${item.merchant} ${item.vcc} ${item.amount}`.toLowerCase();
+                return text.includes(search);
+            });
+
+            if (otps.length === 0) {
+                grid.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">📥</div>
+                        <h3>Menunggu Pesan SMS OTP Baru...</h3>
+                        <p style="color: var(--text-secondary); margin-top: 8px;">Pesan OTP baru yang masuk dari Telegram akan otomatis tampil di sini secara real-time.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            if (filtered.length === 0) {
+                grid.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">🔍</div>
+                        <h3>Tidak Ada Hasil Pencarian</h3>
+                        <p style="color: var(--text-secondary); margin-top: 8px;">Tidak ada data OTP yang cocok dengan kata kunci <b>"${search}"</b>.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = filtered.map(item => {
+                const isCopied = copiedOtpIds.has(String(item.id));
+                const statusClass = isCopied ? 'copied' : 'uncopied';
+                const statusTag = isCopied ? '<span class="otp-status-tag copied">✓ DISALIN</span>' : '<span class="otp-status-tag uncopied">✨ BELUM DISALIN</span>';
+                const copyBtnText = isCopied ? '✓ Copied' : 'Copy 📋';
+
+                return `
+                <div class="otp-card ${statusClass}">
+                    <div class="otp-header">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="otp-label">Kode OTP</span>
+                            ${statusTag}
+                        </div>
+                        <span class="time-stamp">${item.time || 'Baru Saja'}</span>
+                    </div>
+                    
+                    <div class="otp-code-box ${statusClass}" onclick="copyCode('${item.id}', '${item.otp}')" title="Klik untuk menyalin angka ${item.otp}">
+                        <span class="otp-code">${item.otp}</span>
+                        <span class="copy-badge">${copyBtnText}</span>
+                    </div>
+
+                    <div class="details-list">
+                        <div class="detail-item">
+                            <span class="detail-label">💳 VCC</span>
+                            <span class="detail-value">• • • • ${item.vcc || '?'}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">🏪 Merchant</span>
+                            <span class="detail-value">${item.merchant || '?'}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">💰 Amount</span>
+                            <span class="detail-value">${item.amount || '?'}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            }).join('');
+        }
+
+        async function fetchOtps() {
+            try {
+                const res = await fetch('/api/otps');
+                if (res.ok) {
+                    allOtps = await res.json();
+                    renderOtps(allOtps);
+                }
+            } catch (err) {
+                console.error('Fetch error:', err);
+            }
+        }
+
+        async function clearHistory() {
+            if (confirm('Apakah Anda yakin ingin menghapus seluruh riwayat OTP?')) {
+                await fetch('/api/otps', { method: 'DELETE' });
+                allOtps = [];
+                renderOtps(allOtps);
+                showToast('🗑️ Riwayat OTP dibersihkan');
+            }
+        }
+
+        document.getElementById('search-input').addEventListener('input', () => {
+            renderOtps(allOtps);
+        });
+
+        // Initialize Real-time Server-Sent Events (SSE)
+        function initSSE() {
+            if (sseSource) { sseSource.close(); }
+            const statusEl = document.getElementById('connection-status');
+            sseSource = new EventSource('/api/events');
+
+            sseSource.onmessage = function(e) {
+                try {
+                    const newOtp = JSON.parse(e.data);
+                    allOtps.unshift(newOtp);
+                    if (allOtps.length > 9) {
+                        allOtps = allOtps.slice(0, 9);
+                    }
+                    renderOtps(allOtps);
+                    playChime();
+                    showToast(`🔔 OTP Baru: ${newOtp.otp} (${newOtp.merchant})`);
+                } catch(err){}
+            };
+
+            sseSource.onopen = function() {
+                statusEl.innerText = 'Live Connected';
+                statusEl.parentElement.style.borderColor = 'rgba(34, 197, 94, 0.2)';
+            };
+
+            sseSource.onerror = function() {
+                statusEl.innerText = 'Reconnecting...';
+                statusEl.parentElement.style.borderColor = 'rgba(239, 68, 68, 0.2)';
+            };
+        }
+
+        // End of script
+    </script>
+</body>
+</html>
