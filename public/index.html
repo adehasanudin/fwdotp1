@@ -983,7 +983,42 @@
                 <p style="color: var(--text-secondary); margin-top: 8px;">Pesan OTP baru yang masuk dari Telegram akan otomatis tampil di sini secara real-time.</p>
             </div>
         </div>
+
+        <div id="pagination-controls" style="display:none; justify-content:center; align-items:center; gap:16px; margin:24px 0 8px;">
+            <button id="btn-prev-page" onclick="changePage(-1)" style="
+                background: rgba(255,255,255,0.05);
+                border: 1px solid rgba(255,255,255,0.12);
+                color: #e2e8f0;
+                padding: 8px 20px;
+                border-radius: 8px;
+                cursor: pointer;
+                font-size: 14px;
+                font-weight: 600;
+                transition: all 0.2s;
+            ">← Sebelumnya</button>
+
+            <span id="page-indicator" style="
+                color: #94a3b8;
+                font-size: 14px;
+                font-weight: 600;
+                min-width: 80px;
+                text-align: center;
+            ">Hal 1 / 2</span>
+
+            <button id="btn-next-page" onclick="changePage(1)" style="
+                background: rgba(255,255,255,0.05);
+                border: 1px solid rgba(255,255,255,0.12);
+                color: #e2e8f0;
+                padding: 8px 20px;
+                border-radius: 8px;
+                cursor: pointer;
+                font-size: 14px;
+                font-weight: 600;
+                transition: all 0.2s;
+            ">Berikutnya →</button>
+        </div>
     </main>
+
 
     <div class="toast" id="toast">
         <span>✅ OTP Berhasil Disalin!</span>
@@ -1138,6 +1173,9 @@
 
         // ======= DASHBOARD LOGIC =======
         let allOtps = [];
+        let currentPage = 1;
+        const PAGE_SIZE = 9;
+        const MAX_PAGES = 2;
 
         function playChime() {
             try {
@@ -1227,6 +1265,7 @@
                         <p style="color: var(--text-secondary); margin-top: 8px;">Pesan OTP baru yang masuk dari Telegram akan otomatis tampil di sini secara real-time.</p>
                     </div>
                 `;
+                document.getElementById('pagination-controls').style.display = 'none';
                 return;
             }
 
@@ -1238,10 +1277,30 @@
                         <p style="color: var(--text-secondary); margin-top: 8px;">Tidak ada data OTP yang cocok dengan kata kunci <b>"${search}"</b>.</p>
                     </div>
                 `;
+                document.getElementById('pagination-controls').style.display = 'none';
                 return;
             }
 
-            grid.innerHTML = filtered.map(item => {
+            // Pagination
+            const totalPages = Math.min(Math.ceil(filtered.length / PAGE_SIZE), MAX_PAGES);
+            if (currentPage > totalPages) currentPage = totalPages;
+            const start = (currentPage - 1) * PAGE_SIZE;
+            const pageItems = filtered.slice(start, start + PAGE_SIZE);
+
+            // Update pagination controls
+            const paginationEl = document.getElementById('pagination-controls');
+            if (totalPages > 1) {
+                paginationEl.style.display = 'flex';
+                document.getElementById('page-indicator').textContent = `Hal ${currentPage} / ${totalPages}`;
+                document.getElementById('btn-prev-page').disabled = currentPage <= 1;
+                document.getElementById('btn-next-page').disabled = currentPage >= totalPages;
+                document.getElementById('btn-prev-page').style.opacity = currentPage <= 1 ? '0.4' : '1';
+                document.getElementById('btn-next-page').style.opacity = currentPage >= totalPages ? '0.4' : '1';
+            } else {
+                paginationEl.style.display = 'none';
+            }
+
+            grid.innerHTML = pageItems.map(item => {
                 const isCopied = Boolean(item.copied) || copiedOtpIds.has(String(item.id));
                 const statusClass = isCopied ? 'copied' : 'uncopied';
                 const statusTag = isCopied ? '<span class="otp-status-tag copied">✓ DISALIN</span>' : '<span class="otp-status-tag uncopied">✨ BELUM DISALIN</span>';
@@ -1282,6 +1341,19 @@
             }).join('');
         }
 
+        function changePage(dir) {
+            const filtered = allOtps.filter(item => {
+                const search = document.getElementById('search-input').value.toLowerCase().trim();
+                if (!search) return true;
+                const text = `${item.otp} ${item.merchant} ${item.vcc} ${item.amount}`.toLowerCase();
+                return text.includes(search);
+            });
+            const totalPages = Math.min(Math.ceil(filtered.length / PAGE_SIZE), MAX_PAGES);
+            currentPage = Math.max(1, Math.min(currentPage + dir, totalPages));
+            renderOtps(allOtps);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
         async function fetchOtps() {
             try {
                 const res = await fetch('/api/otps');
@@ -1304,6 +1376,7 @@
         }
 
         document.getElementById('search-input').addEventListener('input', () => {
+            currentPage = 1;
             renderOtps(allOtps);
         });
 
@@ -1339,9 +1412,10 @@
                     // Case 2: New OTP arrived
                     const newOtp = eventData.type === 'new_otp' ? eventData.data : eventData;
                     allOtps.unshift(newOtp);
-                    if (allOtps.length > 9) {
-                        allOtps = allOtps.slice(0, 9);
+                    if (allOtps.length > 18) {
+                        allOtps = allOtps.slice(0, 18);
                     }
+                    currentPage = 1;
                     renderOtps(allOtps);
                     playChime();
                     showToast(`🔔 OTP Baru: ${newOtp.otp} (${newOtp.merchant})`);

@@ -40,13 +40,13 @@ function loadOtps() {
 
 function saveOtps(otps) {
     try {
-        fs.writeFileSync(OTPS_FILE, JSON.stringify(otps.slice(0, 9), null, 2));
+        fs.writeFileSync(OTPS_FILE, JSON.stringify(otps.slice(0, 18), null, 2));
     } catch (e) {
         console.error('[Web Server] Error saving otps.json:', e.message);
     }
 }
 
-let otpHistory = loadOtps().slice(0, 9);
+let otpHistory = loadOtps().slice(0, 18);
 
 function broadcastSSE(data) {
     sseClients.forEach(client => {
